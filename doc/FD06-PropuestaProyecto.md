@@ -1,6 +1,38 @@
-# Propuesta de Proyecto (FD06)
+<center>
 
-**Sistema *DBCanvas — Database Diagram Generator***
+![logo UPT](./media/logo-upt.png)
+
+**UNIVERSIDAD PRIVADA DE TACNA**
+
+**FACULTAD DE INGENIERÍA**
+
+**Escuela Profesional de Ingeniería de Sistemas**
+
+**Proyecto *DBCanvas — Generador de Diagramas de Base de Datos***
+
+Curso: *Base de Datos II*
+
+Docente: *Mag. Patrick Cuadros Quiroga*
+
+Integrantes:
+
+***Zapana Murillo, Kiara Holly (2023077087)***
+
+***Vargas Espinoza, Jefferson Alfonso (2023076820)***
+
+**Tacna – Perú**
+
+***2026***
+
+</center>
+
+***
+
+Sistema *DBCanvas — Database Diagram Generator*
+
+Propuesta de Proyecto
+
+Versión *1.0*
 
 | CONTROL DE VERSIONES | | | | | |
 | :-: | :- | :- | :- | :- | :- |
@@ -11,31 +43,55 @@
 
 ## 1. Identificación del Proyecto
 
-**Nombre del Proyecto:** DBCanvas — Generador de Diagramas de Base de Datos
-**Estudiantes:** Zapana Murillo, Kiara Holly y Vargas Espinoza, Jefferson Alfonso
-**Curso:** Base de Datos II
-**Docente:** Mag. Patrick Cuadros Quiroga
+| Campo | Valor |
+| :-- | :-- |
+| Nombre | DBCanvas — Generador de Diagramas de Base de Datos |
+| Estudiantes | Zapana Murillo, Kiara Holly (2023077087) / Vargas Espinoza, Jefferson Alfonso (2023076820) |
+| Curso | Base de Datos II |
+| Docente | Mag. Patrick Cuadros Quiroga |
 
-## 2. Descripción Breve
+## 2. Descripción
 
-DBCanvas nace con la intención de proporcionar una utilidad unificada para visualizar automáticamente esquemas de base de datos a partir de código (DDL/JSON) o conexiones vivas. Frente a opciones corporativas pesadas, el proyecto ofrecerá una aplicación web con guardado de diagramas en la nube (PostgreSQL gestionado) mediante flujos colaborativos en tiempo real, junto con una contraparte de Escritorio que trabaja exclusivamente en offline, protegiendo las credenciales corporativas o productivas del usuario mientras levanta y dibuja las relaciones y entidades en segundos.
+DBCanvas es un generador de diagramas que visualiza automáticamente la estructura de bases de datos. A diferencia de herramientas existentes que solo soportan un motor específico o requieren enviar datos a la nube, DBCanvas:
 
-## 3. Relevancia y Justificación
+1. **Cubre 9 categorías de bases de datos** (Relacional, Document, Key-Value, Graph, Columnar, Time-Series, NewSQL, Spatial, Object-Oriented) mediante un modelo intermedio universal (`SchemaModel`).
+2. **Ofrece dos superficies**: una Web App (React) para parseo de texto con persistencia en la nube, y una Desktop App (Electron + Go) para conexión directa a BDs locales sin envío de datos al exterior.
+3. **Es de código abierto** y gratuito, publicado bajo licencia MIT.
 
-La documentación es a menudo el eslabón más débil y costoso en el desarrollo de software. Esta herramienta impacta directamente en la productividad al automatizar procesos tediosos.
-Desde el punto de vista académico, es un desafío de alta exigencia que demanda conocimientos teóricos profundos de Base de Datos (Extracción de `information_schema`/metadatos SQL) y desarrollo de parsers sintácticos en herramientas modernas (TypeScript, Go), a su vez aplicando arquitecturas escalables o estrategias "vendor-free" para mantener la dueñez de la infraestructura alojada gracias a `@insforge/cli`.
+## 3. Justificación
 
-## 4. Perfil Tecnológico
+La documentación de esquemas de bases de datos es una práctica esencial pero frecuentemente descuidada porque las herramientas disponibles son pesadas (MySQL Workbench, DBeaver), costosas (DataGrip — USD 229/año) o comprometen la privacidad (dbdiagram.io). Además, ninguna herramienta existente cubre las 9 categorías de bases de datos en un solo producto.
 
-El stack propuesto para superar los requisitos de conectividad, agilidad y asincronía es:
-- **Gestión:** Monorepo con `Turborepo` / `pnpm`.
-- **Backend / Puente Desktop:** Go (`net/http`) para conexión directa a motores y manipulación de AST sin dependencias pesadas.
-- **Frontend y Render:** `React` v18, `Vite`, UI `TailwindCSS/Shadcn`, `Monaco Editor` y `Mermaid.js` para visualización por nodos.
-- **Servidor Cloud Web:** PostgreSQL, con sistema Auth y sincronización manejado por el servicio de terminal de `@insforge/cli`.
+DBCanvas resuelve esto siendo ligero (~200 MB con todo incluido), multiplataforma, multi-motor y de código abierto.
 
-## 5. Cronograma Hitos (Milestones)
+## 4. Stack Tecnológico
 
-1. **v0.1 - Foundation:** Creación de Monorepo, definición de UI, contratos de APIs y carpetas `skills/`, `apps/` y `packages/`.
-2. **v0.2 - Persistencia DB Nube y Backend Go:** Habilitar conexión con local Go y también estructura para DB PostgreSQL (Logins sin _vendor lock-in_) a ser usado en Web.
-3. **v0.3 - Web App (React):** Despliegue del cliente web que se conecta al DB, usa el parser local de AST para inyectar código plano y permite colaboración. 
-4. **v1.0 - Desktop Packaging:** Fusión del frontend interactivo y el servidor de inferencias en Go dentro de un empaquetado nativo `.exe` o `.dmg` con soporte de exportación local en `Electron`.
+| Capa | Tecnología |
+| :-- | :-- |
+| Monorepo | pnpm workspaces + Turborepo |
+| Frontend | React 18, Vite 5, TypeScript, TailwindCSS, Shadcn/UI |
+| Editor | Monaco Editor |
+| Diagramas | Mermaid.js |
+| Parsers | TypeScript puro (`@dbcanvas/parsers`) |
+| Backend local | Go 1.22 (`net/http` + drivers nativos) |
+| Desktop | Electron 29 + electron-vite |
+| Persistencia Web | PostgreSQL vía `@insforge/cli` (auth + real-time + DB) |
+| Testing | Vitest (unitario) + Playwright (E2E) |
+| CI/CD | GitHub Actions |
+
+## 5. Cronograma
+
+| Fase | Milestone | Descripción | Duración |
+| :--: | :--: | :-- | :--: |
+| 1 | v0.1 | Monorepo setup, SchemaModel, paquetes compartidos, migraciones DB nube | 5 días |
+| 2 | v0.2 | Core engine: parsers DDL y JSON Schema + conectores Go para 5 motores | 8 días |
+| 3 | v0.3 | Web App: UI completa, login, guardado, exportación, colaboración RT | 8 días |
+| 4 | v1.0 | Desktop App: Electron + Go embebido, empaquetado multiplataforma | 9 días |
+| | **Total** | | **~30 días** |
+
+## 6. División de Trabajo
+
+| Integrante | Responsabilidad Principal |
+| :-- | :-- |
+| **Vargas Espinoza, Jefferson** | Backend Go (conectores, API HTTP), parsers TypeScript, configuración del monorepo, migraciones DB, CI/CD |
+| **Zapana Murillo, Kiara** | Frontend React (Web App + Desktop UI), componentes UI compartidos, diseño visual, tests E2E |

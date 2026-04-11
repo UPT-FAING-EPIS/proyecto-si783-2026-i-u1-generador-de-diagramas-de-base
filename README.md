@@ -1,30 +1,59 @@
 [![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/O8I-PXKI)
 [![Open in Codespaces](https://classroom.github.com/assets/launch-codespace-2972f46106e565e64193e422d61a12cf1da4916b45550586e14ef0a7c637dd04.svg)](https://classroom.github.com/open-in-codespaces?assignment_repo_id=23223057)
-# Proyecto DBCanvas — Generador de Diagramas de Base de Datos
 
-DBCanvas es una herramienta "Zero Config" creada para solucionar la falta de documentación de los esquemas de bases de datos, combinando las ventajas de privacidad del entorno local con capacidades de tiempo real en la Nube.
+# DBCanvas — Generador de Diagramas de Base de Datos
+
+**DBCanvas** genera diagramas de base de datos automáticamente. Recibe un esquema (vía texto DDL, archivo JSON o conexión directa) y produce un diagrama visual interactivo exportable a PNG, SVG y Mermaid.
+
+## ¿Qué tipos de BD soporta?
+
+Cubre **9 categorías** de bases de datos mediante 3 mecanismos de entrada:
+
+| Mecanismo | Categorías cubiertas |
+| :-- | :-- |
+| Parser SQL DDL | Relacional, NewSQL, Columnar, Spatial, Time-Series |
+| Parser JSON Schema | Document, Key-Value, Object-Oriented |
+| Conectores Go (Desktop) | PostgreSQL, MySQL, SQLite, MongoDB, SQL Server |
 
 ## Arquitectura
 
-El ecosistema (Monorepo conformado en `apps` y `packages`) presenta dos modos principales de operación:
-1. **Web App (`apps/web`):** Un cliente React interactivo donde puedes escribir sentencias DDL y obtener diagramaje en vivo. Está conectado a una **Nube de PostgreSQL** administrada por `@insforge/cli` que permite a los desarrolladores guardar sus resultados, gestionar sus credenciales propietarias (mediante una tabla de usuarios sin vendor lock-in) y compartir por **WebSockets The Real-time Sync** su trabajo con compañeros de equipo.
-2. **Desktop App (`apps/desktop`):** Aplicación en *Electron* que engendra un proceso puente en `Go` totalmente local. Permite la conexión a PostgreSQL, MySQL, SQLite y MongoDB para inferir su esquema, modelarlo visualmente y exportarlo **sin fuga de información** hacia internet.
+```
+[Fuente de Entrada] → [SchemaModel] → [Mermaid ERD] → [Diagrama Visual]
+```
 
-## Estructura de Documentación
+- **Web App** (`apps/web`): Parsea texto en el navegador. Guarda diagramas en PostgreSQL (nube).
+- **Desktop App** (`apps/desktop`): Se conecta directamente a tu BD local via Go. Nada sale de tu máquina.
+- **Backend Go** (`apps/backend`): Servidor HTTP local para extracción de esquemas desde BDs reales.
 
-Todos los documentos relacionados a la asignatura requeridos como pre-requisito y planeamiento se encuentran en la carpeta `doc/`, en formato DOCX original y transformados/completados a Markdown.
+## Estructura del Proyecto
 
-- `doc/FD01-Informe-Factibilidad.md`
-- `doc/FD02-Informe-Vision.md`
-- `doc/FD03-Informe-Especificacion-Requerimientos.md`
-- `doc/FD04-Informe-Arquitectura-Software.md`
-- `doc/FD05-Informe-ProyectoFinal.md`
-- `doc/FD06-PropuestaProyecto.md`
+```
+├── apps/
+│   ├── web/          # React + Vite (Web App)
+│   ├── desktop/      # Electron (Desktop App)
+│   └── backend/      # Go HTTP server (conectores BD)
+├── packages/
+│   ├── parsers/      # SQL DDL → SchemaModel, JSON → SchemaModel
+│   └── ui/           # Componentes React compartidos
+├── doc/              # Documentación universitaria (FD01-FD06)
+│   └── migrations/   # SQL para la BD cloud
+├── skills/           # Instrucciones para agentes de desarrollo
+└── project/          # Plan maestro del proyecto y issues
+```
 
-## Stack Principal
+## Stack
 
-- **Gestión:** pnpm & Turborepo
-- **Cliente:** React, Vite, Tailwind CSS, Monaco Editor, Mermaid.js
-- **Desktop:** Electron, electron-vite, electron-builder
-- **Local Bridge / Parseo:** Go (net/http y drivers estáticos)
-- **Persistencia Web:** Base de Datos PostgreSQL provisionada vía `@insforge/cli` (Con real-time Websockets).
+| Capa | Tecnología |
+| :-- | :-- |
+| Monorepo | pnpm + Turborepo |
+| Frontend | React 18, Vite, TypeScript, TailwindCSS, Shadcn/UI |
+| Editor | Monaco Editor |
+| Diagramas | Mermaid.js |
+| Backend local | Go 1.22 (drivers nativos para PG, MySQL, SQLite, MongoDB, SQL Server) |
+| Desktop | Electron 29 |
+| Persistencia Web | PostgreSQL via @insforge/cli |
+
+## Equipo
+
+- **Vargas Espinoza, Jefferson Alfonso** — Backend Go, parsers, monorepo, DB
+- **Zapana Murillo, Kiara Holly** — Frontend React, UI, Desktop, tests E2E
