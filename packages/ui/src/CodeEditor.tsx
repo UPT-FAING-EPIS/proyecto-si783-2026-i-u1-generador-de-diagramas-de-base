@@ -1,65 +1,93 @@
-import React from "react";
+import React, { useCallback, useRef } from "react";
+import Editor, { OnMount } from "@monaco-editor/react";
 
 interface CodeEditorProps {
-    /** Contenido actual del editor */
     value: string;
-    /** Callback que se dispara cuando el contenido cambia */
     onChange: (value: string) => void;
-    /** Lenguaje para syntax hint y placeholder */
     language?: "sql" | "json";
 }
 
-const PLACEHOLDERS: Record<string, string> = {
-    sql: `-- Pega tu SQL DDL aquí
-CREATE TABLE users (
-  id SERIAL PRIMARY KEY,
-  email VARCHAR(255) NOT NULL,
-  name TEXT
-);
+export function CodeEditor({ value, onChange, language = "sql" }: CodeEditorProps) {
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-CREATE TABLE orders (
-  id SERIAL PRIMARY KEY,
-  user_id INT REFERENCES users(id),
-  total DECIMAL(10, 2)
-);`,
-    json: `{
-  "$schema": "http://json-schema.org/draft-07/schema",
-  "type": "object",
-  "properties": {
-    "name": { "type": "string" },
-    "email": { "type": "string" }
-  }
-}`,
-};
+    const handleChange = useCallback(
+        (val: string | undefined) => {
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+            debounceRef.current = setTimeout(() => {
+                onChange(val ?? "");
+            }, 300);
+        },
+        [onChange]
+    );
 
-/**
- * Placeholder: Textarea simple con estilos básicos.
- * La integración real con Monaco Editor se implementa en Issue #20.
- */
-export function CodeEditor({
-    value,
-    onChange,
-    language = "sql",
-}: CodeEditorProps) {
+    const handleEditorMount: OnMount = (editor, monaco) => {
+        const domNode = editor.getDomNode();
+        if (!domNode) return;
+
+        domNode.addEventListener("dragover", (e) => e.preventDefault());
+
+        domNode.addEventListener("drop", (e) => {
+            e.preventDefault();
+            const file = e.dataTransfer?.files[0];
+            if (!file) return;
+            const ext = file.name.split(".").pop()?.toLowerCase();
+            if (ext !== "sql" && ext !== "json") return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const content = event.target?.result as string;
+                editor.setValue(content);
+                onChange(content);
+            };
+            reader.readAsText(file);
+        });
+
+        monaco.languages.register({ id: "mermaid" });
+        monaco.languages.setMonarchTokensProvider("mermaid", {
+            tokenizer: {
+                root: [
+                    [/erDiagram|classDiagram|sequenceDiagram|flowchart/, "keyword"],
+                    [/\{|\}/, "delimiter.bracket"],
+                    [/PK|FK|UK/, "type"],
+                    [/".*?"/, "string"],
+                    [/--/, "comment"],
+                ],
+            },
+        });
+    };
+
     return (
         <div className="w-full h-full flex flex-col rounded-md overflow-hidden border border-neutral-200 dark:border-neutral-700">
-            {/* Barra superior con indicador de lenguaje */}
-            <div className="px-3 py-1.5 flex items-center gap-2 bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
-                <span className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
-                    {language}
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 shrink-0">
+                <span className="text-xs font-mono text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                    {language === "sql" ? "SQL DDL" : "JSON Schema"}
+                </span>
+                <span className="text-xs text-neutral-400 dark:text-neutral-500 ml-auto">
+                    Arrastra un archivo .{language} aquí
                 </span>
             </div>
-
-            {/* Área de texto */}
-            <textarea
-                className="flex-1 w-full p-4 font-mono text-sm leading-relaxed bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 resize-none focus:outline-none focus:ring-2 focus:ring-inset focus:ring-teal-500"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder={PLACEHOLDERS[language]}
-                spellCheck={false}
-                autoCapitalize="off"
-                autoCorrect="off"
-            />
+            <div className="flex-1 overflow-hidden">
+                <Editor
+                    height="100%"
+                    language={language}
+                    value={value}
+                    onChange={handleChange}
+                    onMount={handleEditorMount}
+                    theme="vs-dark"
+                    options={{
+                        fontSize: 13,
+                        fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                        minimap: { enabled: false },
+                        scrollBeyondLastLine: false,
+                        lineNumbers: "on",
+                        renderLineHighlight: "line",
+                        tabSize: 2,
+                        wordWrap: "on",
+                        padding: { top: 12, bottom: 12 },
+                        smoothScrolling: true,
+                        cursorBlinking: "smooth",
+                    }}
+                />
+            </div>
         </div>
     );
 }
