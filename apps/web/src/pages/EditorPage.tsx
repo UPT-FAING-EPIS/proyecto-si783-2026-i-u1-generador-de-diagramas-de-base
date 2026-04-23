@@ -1,22 +1,21 @@
 import React from "react";
 import { CodeEditor, DiagramViewer } from "@dbcanvas/ui";
 
-const DEFAULT_SQL = `-- Pega tu SQL DDL aquí
-CREATE TABLE users (
-  id SERIAL PRIMARY KEY,
-  email VARCHAR(255) NOT NULL,
-  name TEXT
-);`;
-
 const DEFAULT_MERMAID = `erDiagram
   USERS {
     int id PK
     string email
     string name
-  }`;
+  }
+  ORDERS {
+    int id PK
+    int user_id FK
+    float total
+  }
+  USERS ||--o{ ORDERS : "tiene"`;
 
 export function EditorPage() {
-    const [value, setValue] = React.useState(DEFAULT_SQL);
+    const [mermaidCode, setMermaidCode] = React.useState(DEFAULT_MERMAID);
 
     return (
         <div className="h-full min-h-screen flex flex-col bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
@@ -26,14 +25,19 @@ export function EditorPage() {
 
             <main className="flex-1 min-h-0 flex">
                 <section className="w-1/2 min-w-0 p-4 border-r border-neutral-200 dark:border-neutral-800">
-                    <CodeEditor value={value} onChange={setValue} language="sql" />
+                    {/* Editor recibe y actualiza mermaidCode directamente */}
+                    <CodeEditor
+                        value={mermaidCode}
+                        onChange={setMermaidCode}
+                        language="sql"
+                    />
                 </section>
 
                 <section className="w-1/2 min-w-0 p-4">
-                    <DiagramViewer mermaidCode={DEFAULT_MERMAID} />
+                    {/* Viewer recibe el mismo estado mermaidCode */}
+                    <DiagramViewer mermaidCode={mermaidCode} />
                 </section>
             </main>
         </div>
     );
 }
-
