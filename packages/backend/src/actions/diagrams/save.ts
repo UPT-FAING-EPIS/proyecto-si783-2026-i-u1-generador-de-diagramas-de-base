@@ -1,0 +1,72 @@
+'use server'
+
+import { db } from '../../db'
+import { diagrams, projects, collaborators, users } from '../../db/schema'
+import { eq, and } from 'drizzle-orm'
+import { createClient } from '../../supabase/server'
+import { revalidatePath } from 'next/cache'
+
+export async function saveDiagramAction({
+  projectId,
+  sqlContent,
+  flowJson,
+  dialect,
+}: {
+  projectId: string
+  sqlContent: string
+  flowJson: any
+  dialect: string
+}) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'No autorizado' }
+  }
+
+  // Get the db user
+  const [dbUser] = await db
+    .select()
+    .from(users)
+    .where(eq(users.authId, user.id))
+    .limit(1)
+
+  if (!dbUser) {
+    return { error: 'Usuario no encontrado' }
+  }
+
+  // Check project access (owner or editor)
+  const [access] = await db
+    .select({ id: projects.id })
+    .from(projects)
+    .innerJoin(
+      collaborators,
+      and(
+        eq(collaborators.projectId, projects.id),
+        eq(collaborators.userId, dbUser.id)
+      )
+    )
+    .where(eq(projects.id, projectId))
+    .limit(1)
+
+  if (!access) {
+    return { error: 'Sin permisos para guardar' }
+  }
+
+  try {
+    await db.update(diagrams)
+      .set({ 
+        sourceCode: sqlContent, 
+        flowJson, 
+        dialect, 
+        updatedAt: new Date() 
+      })
+      .where(eq(diagrams.projectId, projectId))
+
+    revalidatePath(`/editor/${projectId}`)
+    return { success: true }
+  } catch (error) {
+    console.error('Error saving diagram:', error)
+    return { error: 'Error interno al guardar' }
+  }
+}
