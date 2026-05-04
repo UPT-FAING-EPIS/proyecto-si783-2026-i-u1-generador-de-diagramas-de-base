@@ -32,7 +32,7 @@ export async function proxy(request: NextRequest) {
   const PUBLIC_ROUTES = ['/', '/login', '/register']
   const isPublicRoute = PUBLIC_ROUTES.some(route =>
     request.nextUrl.pathname === route ||
-    request.nextUrl.pathname.startsWith('/share/')
+    request.nextUrl.pathname.startsWith('/public/')
   )
 
   if (!user && !isPublicRoute) {

@@ -14,7 +14,7 @@ export default async function PublicPage({ params }: PublicPageProps) {
   const { data: diagram } = await supabase
     .from('diagrams')
     .select('id, flow_json, name, is_public')
-    .eq('id', id)
+    .eq('project_id', id)
     .eq('is_public', true)
     .single()
 

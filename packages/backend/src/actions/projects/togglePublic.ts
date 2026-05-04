@@ -43,9 +43,9 @@ export async function togglePublicAction(projectId: string, isPublic: boolean) {
       .set({ isPublic, updatedAt: new Date() })
       .where(eq(diagrams.projectId, projectId))
 
-    revalidatePath(`/public/${diagramWithProject.diagramId}`)
+    revalidatePath(`/public/${projectId}`)
     
-    return { success: true, publicUrl: `/public/${diagramWithProject.diagramId}` }
+    return { success: true, publicUrl: `/public/${projectId}` }
   } catch (error) {
     console.error('Error toggling public state:', error)
     return { error: 'Error interno al actualizar la privacidad' }
