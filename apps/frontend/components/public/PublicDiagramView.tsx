@@ -4,7 +4,8 @@ import { ReactFlow, Background, Controls, ReactFlowProvider } from '@xyflow/reac
 import '@xyflow/react/dist/style.css'
 import { TableNode } from '@/components/editor/nodes/TableNode'
 import { RelationshipEdge } from '@/components/editor/edges/RelationshipEdge'
-import { useMemo } from 'react'
+const nodeTypes = { tableNode: TableNode }
+const edgeTypes = { relationship: RelationshipEdge }
 
 interface PublicDiagramViewProps {
   flowJson: {
@@ -14,25 +15,24 @@ interface PublicDiagramViewProps {
 }
 
 function PublicDiagramInner({ flowJson }: PublicDiagramViewProps) {
-  const nodeTypes = useMemo(() => ({ tableNode: TableNode }), [])
-  const edgeTypes = useMemo(() => ({ relationship: RelationshipEdge }), [])
-  
   return (
-    <ReactFlow
-      nodes={flowJson.nodes ?? []}
-      edges={flowJson.edges ?? []}
-      nodeTypes={nodeTypes}
-      edgeTypes={edgeTypes}
-      nodesDraggable={false}
-      nodesConnectable={false}
-      elementsSelectable={false}
-      zoomOnDoubleClick={false}
-      fitView
-      proOptions={{ hideAttribution: true }}
-    >
-      <Background color="#1E2A45" gap={16} size={1} />
-      <Controls showInteractive={false} className="bg-[#111827] border-[#1E2A45] fill-white" />
-    </ReactFlow>
+    <div className="w-full h-full bg-[#0A0F1E]">
+      <ReactFlow
+        nodes={flowJson?.nodes ?? []}
+        edges={flowJson?.edges ?? []}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        elementsSelectable={false}
+        zoomOnDoubleClick={false}
+        fitView
+        proOptions={{ hideAttribution: true }}
+      >
+        <Background color="#1E2A45" gap={20} size={1} />
+        <Controls showInteractive={false} className="bg-[#111827] border-[#1E2A45] fill-white" />
+      </ReactFlow>
+    </div>
   )
 }
 

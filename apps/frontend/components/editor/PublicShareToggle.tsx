@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { Link, Loader2, Copy } from 'lucide-react'
 import { togglePublicAction } from '@fluxsql/backend/actions/projects/togglePublic'
@@ -14,9 +14,11 @@ export function PublicShareToggle({ diagramId, initialIsPublic }: PublicShareTog
   const [isPublic, setIsPublic] = useState(initialIsPublic)
   const [loading, setLoading] = useState(false)
 
-  const publicUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/public/${diagramId}`
-    : `/public/${diagramId}`
+  const [publicUrl, setPublicUrl] = useState(`/public/${diagramId}`)
+
+  useEffect(() => {
+    setPublicUrl(`${window.location.origin}/public/${diagramId}`)
+  }, [diagramId])
 
   const handleToggle = async () => {
     if (loading) return

@@ -22,7 +22,15 @@ export default async function PublicPage({ params }: PublicPageProps) {
     notFound()
   }
 
-  const flow = diagram.flow_json as { nodes?: any[]; edges?: any[] }
+  let rawFlow = diagram.flow_json
+  if (typeof rawFlow === 'string') {
+    try {
+      rawFlow = JSON.parse(rawFlow)
+    } catch (e) {
+      console.error("Failed to parse flowJson:", e)
+    }
+  }
+  const flow = (rawFlow || {}) as { nodes?: any[]; edges?: any[] }
 
   return (
     <div className="h-screen w-full flex flex-col bg-[#0A0F1E] text-white">
