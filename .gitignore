@@ -1,3 +1,37 @@
+# Dependencias
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js y Builds
+.next/
+out/
+build/
+dist/
+
+# Turborepo
+.turbo/
+
+# Playwright — auth session & test artifacts
+.playwright/
+apps/web/playwright-report/
+apps/web/test-results/
+
+# Variables de entorno (¡CRÍTICO PARA SUPABASE!)
+.env
+.env.*.local
+.env.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# SO y Editores
+.DS_Store
+.vscode/
+.idea/
 
 # InsForge & AI agent skills
 .insforge
@@ -13,6 +47,3 @@
 .roo
 .trae
 .windsurf
-
-**/node_modules/
-**/dist/
