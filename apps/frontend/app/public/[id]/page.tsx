@@ -1,7 +1,9 @@
 import { createClient } from '@fluxsql/backend/supabase/server'
 import { notFound } from 'next/navigation'
 import { PublicDiagramView } from '@/components/public/PublicDiagramView'
-
+import { db } from '@fluxsql/backend/db'
+import { diagrams } from '@fluxsql/backend/schema'
+import { eq, and } from 'drizzle-orm'
 interface PublicPageProps {
   params: Promise<{ id: string }>
 }
@@ -9,20 +11,27 @@ interface PublicPageProps {
 export default async function PublicPage({ params }: PublicPageProps) {
   const { id } = await params
   
-  const supabase = await createClient()
-
-  const { data: diagram } = await supabase
-    .from('diagrams')
-    .select('id, flow_json, name, is_public')
-    .eq('project_id', id)
-    .eq('is_public', true)
-    .single()
+  const [diagram] = await db
+    .select({
+      id: diagrams.id,
+      name: diagrams.name,
+      flowJson: diagrams.flowJson,
+      isPublic: diagrams.isPublic,
+    })
+    .from(diagrams)
+    .where(
+      and(
+        eq(diagrams.projectId, id),
+        eq(diagrams.isPublic, true)
+      )
+    )
+    .limit(1)
 
   if (!diagram) {
     notFound()
   }
 
-  let rawFlow = diagram.flow_json
+  let rawFlow = diagram.flowJson
   if (typeof rawFlow === 'string') {
     try {
       rawFlow = JSON.parse(rawFlow)
