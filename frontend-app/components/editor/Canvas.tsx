@@ -6,7 +6,8 @@ import '@xyflow/react/dist/style.css'
 import { useEditorStore } from '@/store/useEditorStore'
 import { TableNode } from './nodes/TableNode'
 import { RelationshipEdge } from './edges/RelationshipEdge'
-import { Eye, GitBranch, Grid3X3, Maximize2, MoreHorizontal, Rows3, Save } from 'lucide-react'
+import { Eye, GitBranch, Grid3X3, Maximize2, MoreHorizontal, Rows3, Save, GitCommit } from 'lucide-react'
+import { CommitModal } from './CommitModal'
 
 // CRITICAL: nodeTypes and edgeTypes MUST be defined outside the component
 const nodeTypes = {
@@ -68,11 +69,12 @@ const DEMO_EDGES: Edge[] = [
 ]
 
 interface CanvasProps {
+  projectId: string
   emitNodeMove?: (nodeId: string, position: { x: number, y: number }) => void
   onSave?: () => void
 }
 
-export function Canvas({ emitNodeMove, onSave }: CanvasProps = {}) {
+export function Canvas({ projectId, emitNodeMove, onSave }: CanvasProps) {
   const { fitView, setCenter } = useReactFlow()
   const [showGrid, setShowGrid] = useState(true)
   const { nodes, edges, hoveredNodeId, onNodesChange, onEdgesChange, setNodesAndEdges, setSelectedNodeId, setHoveredNodeId } = useEditorStore()
@@ -133,20 +135,28 @@ export function Canvas({ emitNodeMove, onSave }: CanvasProps = {}) {
         <ToolButton icon={GitBranch} label="Auto-layout" onClick={() => autoLayout(nodes, setNodesAndEdges, fitView)} active />
         <ToolButton icon={Rows3} label="Alinear" onClick={() => alignRows(nodes, setNodesAndEdges)} />
         <ToolButton icon={Grid3X3} label="Cuadrícula" onClick={() => setShowGrid((value) => !value)} active={showGrid} />
+        <CommitModal projectId={projectId}>
+          <ToolButton icon={GitCommit} label="Commit" />
+        </CommitModal>
         <ToolButton icon={Save} label="Guardar" onClick={() => onSave?.()} />
       </div>
     </div>
   )
 }
 
-function ToolButton({ icon: Icon, label, onClick, active = false }: { icon: React.ElementType; label: string; onClick: () => void; active?: boolean }) {
-  return (
-    <button onClick={onClick} className={`flex min-w-20 flex-col items-center gap-1 border-r border-[#1E2A45] px-3 py-2 text-[11px] last:border-r-0 ${active ? 'text-[#60A5FA]' : 'text-[#94A3B8] hover:text-white'}`}>
-      <Icon size={15} />
-      {label}
-    </button>
-  )
-}
+import { forwardRef } from 'react'
+
+const ToolButton = forwardRef<HTMLButtonElement, { icon: React.ElementType; label: string; onClick?: () => void; active?: boolean }>(
+  ({ icon: Icon, label, onClick, active = false, ...props }, ref) => {
+    return (
+      <button ref={ref} onClick={onClick} {...props} className={`flex min-w-20 flex-col items-center gap-1 border-r border-[#1E2A45] px-3 py-2 text-[11px] last:border-r-0 ${active ? 'text-[#60A5FA]' : 'text-[#94A3B8] hover:text-white'}`}>
+        <Icon size={15} />
+        {label}
+      </button>
+    )
+  }
+)
+ToolButton.displayName = 'ToolButton'
 
 function autoLayout(nodes: Node[], setNodesAndEdges: (nodes: Node[], edges: Edge[]) => void, fitView: ReturnType<typeof useReactFlow>['fitView']) {
   const edges = useEditorStore.getState().edges

@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState, type ElementType } from 'react'
+import { useEffect, useRef, useState, forwardRef, type ElementType } from 'react'
 import { ReactFlowProvider, useReactFlow, type Edge, type Node } from '@xyflow/react'
-import { ArrowLeft, Braces, CheckCircle2, Code2, Database, FileJson, GitBranch, LayoutGrid, PanelRight, Play, Plus, Save } from 'lucide-react'
+import { ArrowLeft, Braces, CheckCircle2, Code2, Database, FileJson, GitBranch, LayoutGrid, PanelRight, Play, Plus, Save, History } from 'lucide-react'
 import { toast } from 'sonner'
 import { Canvas } from './Canvas'
 import { EditorPanel } from './EditorPanel'
@@ -193,6 +193,9 @@ function EditorLayoutInner({
         <Database className="mb-7 h-5 w-5 text-[#B6C7E3]" />
         <NavButton icon={Code2} active={showSqlPanel} label="Mostrar u ocultar SQL" onClick={() => setShowSqlPanel((value) => !value)} />
         <NavButton icon={PanelRight} active={showInspector} label="Mostrar u ocultar inspector" onClick={() => setShowInspector((value) => !value)} />
+        <VersionHistorySheet projectId={projectId} onRestore={handleRestore} onCompare={handleCompare}>
+          <NavButton icon={History} label="Historial" />
+        </VersionHistorySheet>
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
@@ -223,8 +226,6 @@ function EditorLayoutInner({
           </div>
           <PresenceToolbar projectId={projectId} currentUser={currentUser} />
           <PublicShareToggle diagramId={projectId} initialIsPublic={initialIsPublic} initialShareAccess={initialShareAccess} />
-          <VersionHistorySheet projectId={projectId} onRestore={handleRestore} onCompare={handleCompare} />
-          <CommitModal projectId={projectId} />
           <ExportMenu projectName={projectName} />
         </header>
 
@@ -272,7 +273,7 @@ function EditorLayoutInner({
               <Metric label="Relaciones" value={stats.relations} />
               <Metric label="Advertencias" value={stats.warnings} />
             </div>
-            <Canvas emitNodeMove={emitNodeMove} onSave={handleSave} />
+            <Canvas projectId={projectId} emitNodeMove={emitNodeMove} onSave={handleSave} />
           </div>
 
           {showInspector && (
@@ -304,29 +305,27 @@ function Metric({ label, value }: { label: string; value: number }) {
   )
 }
 
-function NavButton({
-  icon: Icon,
-  label,
-  active = false,
-  onClick,
-}: {
+export const NavButton = forwardRef<HTMLButtonElement, {
   icon: ElementType
   label: string
   active?: boolean
-  onClick: () => void
-}) {
+  onClick?: () => void
+}>(({ icon: Icon, label, active = false, onClick, ...props }, ref) => {
   return (
     <button
+      ref={ref}
       type="button"
       onClick={onClick}
       title={label}
       aria-label={label}
       className={`mb-2 rounded-xl p-3 transition ${active ? 'bg-[#1A6CF6] text-white shadow-lg shadow-[#1A6CF6]/30' : 'text-[#64748B] hover:bg-[#111827] hover:text-white'}`}
+      {...props}
     >
       <Icon size={18} />
     </button>
   )
-}
+})
+NavButton.displayName = 'NavButton'
 
 export function EditorLayout(props: EditorLayoutProps) {
   return (

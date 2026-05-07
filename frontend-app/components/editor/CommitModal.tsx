@@ -11,11 +11,7 @@ import { useEditorStore } from '@/store/useEditorStore'
 import { createVersionAction } from '@/lib/backend/actions/versions/create'
 import { GitCommit } from 'lucide-react'
 
-interface CommitModalProps {
-  projectId: string
-}
-
-export function CommitModal({ projectId }: CommitModalProps) {
+export function CommitModal({ projectId, children }: { projectId: string; children?: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
@@ -50,14 +46,16 @@ export function CommitModal({ projectId }: CommitModalProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="bg-[#111827] border-[#1E2A45] text-[#E2E8F0] hover:bg-[#1E2A45] hover:text-white"
-        >
-          <GitCommit className="w-4 h-4 mr-2 text-[#00D4FF]" />
-          Commit
-        </Button>
+        {children || (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="bg-[#111827] border-[#1E2A45] text-[#E2E8F0] hover:bg-[#1E2A45] hover:text-white"
+          >
+            <GitCommit className="w-4 h-4 mr-2 text-[#00D4FF]" />
+            Commit
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="bg-[#111827] border-[#1E2A45] text-white sm:max-w-[425px]">
         <motion.div

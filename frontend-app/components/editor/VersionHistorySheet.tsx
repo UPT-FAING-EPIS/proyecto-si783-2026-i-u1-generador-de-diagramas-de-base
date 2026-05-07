@@ -21,6 +21,7 @@ interface VersionHistorySheetProps {
   projectId: string
   onRestore?: (versionId: string) => void
   onCompare?: (versionId: string, versionNumber: number) => void
+  children?: React.ReactNode
 }
 
 interface VersionData {
@@ -32,7 +33,7 @@ interface VersionData {
   authorName: string | null
 }
 
-export function VersionHistorySheet({ projectId, onRestore, onCompare }: VersionHistorySheetProps) {
+export function VersionHistorySheet({ projectId, onRestore, onCompare, children }: VersionHistorySheetProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [versions, setVersions] = useState<VersionData[]>([])
@@ -64,14 +65,16 @@ export function VersionHistorySheet({ projectId, onRestore, onCompare }: Version
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="bg-[#111827] border-[#1E2A45] text-[#E2E8F0] hover:bg-[#1E2A45] hover:text-white"
-        >
-          <History className="w-4 h-4 mr-2 text-[#94A3B8]" />
-          Historial
-        </Button>
+        {children || (
+          <Button
+            variant="outline"
+            size="sm"
+            className="bg-[#111827] border-[#1E2A45] text-[#E2E8F0] hover:bg-[#1E2A45] hover:text-white"
+          >
+            <History className="w-4 h-4 mr-2 text-[#94A3B8]" />
+            Historial
+          </Button>
+        )}
       </SheetTrigger>
       <SheetContent 
         side="right" 
