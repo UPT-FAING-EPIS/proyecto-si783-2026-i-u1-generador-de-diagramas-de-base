@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   Sheet,
@@ -11,16 +11,17 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-import { History, Clock, ArrowRight } from 'lucide-react'
+import { History, Clock, ArrowRight, Trash2 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { listVersionsAction } from '@/lib/backend/actions/versions/list'
+import { deleteVersionAction } from '@/lib/backend/actions/versions/delete'
 import { toast } from 'sonner'
 
 interface VersionHistorySheetProps {
   projectId: string
   onRestore?: (versionId: string) => void
-  onCompare?: (versionId: string, versionNumber: number) => void
+  onCompare?: (versionId: string) => void
   children?: React.ReactNode
 }
 
@@ -38,29 +39,44 @@ export function VersionHistorySheet({ projectId, onRestore, onCompare, children 
   const [loading, setLoading] = useState(true)
   const [versions, setVersions] = useState<VersionData[]>([])
 
+  const fetchVersions = useCallback(async () => {
+    setLoading(true)
+    const result = await listVersionsAction(projectId)
+    if (result.error) {
+      toast.error(result.error)
+    } else if (result.data) {
+      setVersions(result.data)
+    }
+    setLoading(false)
+  }, [projectId])
+
   useEffect(() => {
     if (!open) return
+    const timeout = window.setTimeout(() => {
+      void fetchVersions()
+    }, 0)
 
-    let isMounted = true
-    const fetchVersions = async () => {
-      setLoading(true)
-      const result = await listVersionsAction(projectId)
-      if (isMounted) {
-        if (result.error) {
-          toast.error(result.error)
-        } else if (result.data) {
-          setVersions(result.data)
-        }
-        setLoading(false)
-      }
+    return () => window.clearTimeout(timeout)
+  }, [fetchVersions, open])
+
+  async function handleDelete(version: VersionData) {
+    const ok = window.confirm(`Eliminar el commit v${version.versionNumber}? Esta accion no se puede deshacer.`)
+    if (!ok) return
+
+    const result = await deleteVersionAction(version.id, projectId)
+    if (result.error) {
+      toast.error(result.error)
+      return
     }
 
-    fetchVersions()
+    toast.success(`Commit v${result.versionNumber} eliminado`)
+    await fetchVersions()
+  }
 
-    return () => {
-      isMounted = false
-    }
-  }, [open, projectId])
+  function handleCompareClick(versionId: string) {
+    onCompare?.(versionId)
+    setOpen(false)
+  }
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -145,14 +161,22 @@ export function VersionHistorySheet({ projectId, onRestore, onCompare, children 
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => {
-                          onCompare(version.id, version.versionNumber)
-                        }}
+                        onClick={() => handleCompareClick(version.id)}
                         className="h-7 px-2 text-xs bg-[#1E2A45] text-white hover:bg-[#1E2A45]/80 hover:text-white transition-opacity"
                       >
                         Comparar ↔
                       </Button>
                     )}
+
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDelete(version)}
+                      className="h-7 w-7 p-0 text-xs bg-red-500/10 text-red-200 hover:bg-red-500/20 hover:text-red-100 transition-opacity"
+                      title="Eliminar commit"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
 
                     {onRestore && (
                       <Button

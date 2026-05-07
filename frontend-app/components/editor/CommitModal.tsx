@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { useReactFlow } from '@xyflow/react'
 import { useEditorStore } from '@/store/useEditorStore'
 import { createVersionAction } from '@/lib/backend/actions/versions/create'
+import { serializeVersionSnapshots } from '@/lib/version-snapshots'
 import { GitCommit } from 'lucide-react'
 
 export function CommitModal({ projectId, children }: { projectId: string; children?: React.ReactNode }) {
@@ -18,6 +19,7 @@ export function CommitModal({ projectId, children }: { projectId: string; childr
 
   const { toObject } = useReactFlow()
   const sqlValue = useEditorStore((state) => state.sqlValue)
+  const dialect = useEditorStore((state) => state.dialect)
 
   const handleCommit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,7 +32,8 @@ export function CommitModal({ projectId, children }: { projectId: string; childr
     // ✅ Serializar y deserializar para limpiar referencias circulares
     const flowJson = JSON.parse(JSON.stringify(rawFlow))
     
-    const result = await createVersionAction(projectId, flowJson, sqlValue, message.trim())
+    const snapshots = serializeVersionSnapshots(flowJson.nodes ?? [])
+    const result = await createVersionAction(projectId, flowJson, sqlValue, message.trim(), dialect, snapshots)
     
     setLoading(false)
 

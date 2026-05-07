@@ -53,6 +53,13 @@ export const diagramVersions = pgTable('diagram_versions', {
   versionNumber: integer('version_number').notNull(),
   flowJson: jsonb('flow_json').notNull(),
   sqlContent: text('sql_content').default(''),
+  activeDialect: text('active_dialect').default('postgresql').notNull(),
+  snapshots: jsonb('snapshots').$type<{
+    postgresql: string
+    mysql: string
+    sqlserver: string
+    json: string
+  }>(),
   message: text('message').notNull(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

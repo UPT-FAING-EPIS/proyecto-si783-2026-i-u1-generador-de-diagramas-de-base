@@ -1,33 +1,72 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { useEffect, useMemo, useState, type ElementType } from 'react'
 import { useTheme } from 'next-themes'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { CheckCircle2, GitCompareArrows, Minus, Plus } from 'lucide-react'
+import { formatDistanceToNow } from 'date-fns'
+import { es } from 'date-fns/locale'
+import {
+  Braces,
+  CheckCircle2,
+  Code2,
+  Database,
+  GitCompareArrows,
+  Minus,
+  Plus,
+  Search,
+  Table2,
+  X,
+} from 'lucide-react'
+import { toast } from 'sonner'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { listVersionsAction } from '@/lib/backend/actions/versions/list'
+import { getVersionDetailAction } from '@/lib/backend/actions/versions/detail'
+import type { EditorDialect } from '@/lib/editor-schema'
 
 const DiffEditor = dynamic(
   () => import('@monaco-editor/react').then((m) => m.DiffEditor),
-  { ssr: false, loading: () => <div className="h-96 w-full animate-pulse rounded bg-[#1E1E1E]" /> }
+  { ssr: false, loading: () => <div className="h-full w-full animate-pulse bg-[#08111F]" /> }
 )
 
 interface DiffViewerModalProps {
   open: boolean
   onClose: () => void
-  originalCode: string
-  modifiedCode: string
-  versionLabel: string
+  projectId: string
+  initialVersionId?: string
+}
+
+type VersionData = {
+  id: string
+  versionNumber: number
+  message: string
+  userId: string
+  createdAt: Date | null
+  authorName: string | null
+}
+
+type VersionDetail = {
+  versionNumber: number
+  activeDialect: EditorDialect
+  snapshots: Record<EditorDialect, string>
 }
 
 type DiffRow = {
-  type: 'added' | 'removed' | 'same'
+  type: 'added' | 'removed'
   text: string
 }
 
+const DIALECTS: Array<{ value: EditorDialect; label: string; icon: ElementType; tone: string }> = [
+  { value: 'postgresql', label: 'PostgreSQL', icon: Database, tone: 'text-sky-300' },
+  { value: 'mysql', label: 'MySQL', icon: Database, tone: 'text-slate-300' },
+  { value: 'sqlserver', label: 'SQL Server', icon: Code2, tone: 'text-red-300' },
+  { value: 'json', label: 'JSON', icon: Braces, tone: 'text-emerald-300' },
+]
+
 function buildLineDiff(originalCode: string, modifiedCode: string) {
   const original = originalCode.split('\n')
-  const modifiedSet = new Set(modifiedCode.split('\n').map((line) => line.trim()).filter(Boolean))
-  const originalSet = new Set(original.map((line) => line.trim()).filter(Boolean))
   const modified = modifiedCode.split('\n')
+  const modifiedSet = new Set(modified.map((line) => line.trim()).filter(Boolean))
+  const originalSet = new Set(original.map((line) => line.trim()).filter(Boolean))
 
   const removed: DiffRow[] = original
     .filter((line) => line.trim() && !modifiedSet.has(line.trim()))
@@ -40,74 +79,279 @@ function buildLineDiff(originalCode: string, modifiedCode: string) {
   return { rows: [...removed, ...added], added: added.length, removed: removed.length }
 }
 
-export function DiffViewerModal({ open, onClose, originalCode, modifiedCode, versionLabel }: DiffViewerModalProps) {
+function extractChangedObjects(rows: DiffRow[]) {
+  const names = new Map<string, number>()
+  const patterns = [
+    /CREATE\s+TABLE\s+["`\[]?([\w.-]+)/i,
+    /ALTER\s+TABLE\s+["`\[]?([\w.-]+)/i,
+    /REFERENCES\s+["`\[]?([\w.-]+)/i,
+    /"([^"]+)"\s*:/,
+  ]
+
+  rows.forEach((row) => {
+    const match = patterns.map((pattern) => row.text.match(pattern)).find(Boolean)
+    const rawName = match?.[1]?.replace(/[\]`".]/g, '')
+    if (!rawName) return
+    names.set(rawName, (names.get(rawName) ?? 0) + 1)
+  })
+
+  return Array.from(names.entries()).map(([name, changes]) => ({ name, changes }))
+}
+
+function relativeDate(date: Date | null) {
+  if (!date) return 'Fecha desconocida'
+  return formatDistanceToNow(new Date(date), { addSuffix: true, locale: es })
+}
+
+export function DiffViewerModal({ open, onClose, projectId, initialVersionId }: DiffViewerModalProps) {
   const { resolvedTheme } = useTheme()
-  const hasDiff = originalCode.trim() !== modifiedCode.trim()
-  const diff = buildLineDiff(originalCode, modifiedCode)
+  const [versions, setVersions] = useState<VersionData[]>([])
+  const [details, setDetails] = useState<Record<string, VersionDetail>>({})
+  const [versionA, setVersionA] = useState('')
+  const [versionB, setVersionB] = useState('')
+  const [dialect, setDialect] = useState<EditorDialect>('postgresql')
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [sideBySide, setSideBySide] = useState(true)
+  const [syncScroll, setSyncScroll] = useState(true)
+  const [hideUnchanged, setHideUnchanged] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+
+    let isMounted = true
+    async function loadVersions() {
+      setLoading(true)
+      setDetails({})
+      const result = await listVersionsAction(projectId)
+      if (!isMounted) return
+      if (result.error) {
+        toast.error(result.error)
+        setLoading(false)
+        return
+      }
+
+      const nextVersions = result.data ?? []
+      setVersions(nextVersions)
+      const selectedA = initialVersionId || nextVersions[1]?.id || nextVersions[0]?.id || ''
+      const selectedB = nextVersions.find((version) => version.id !== selectedA)?.id || selectedA
+      setVersionA(selectedA)
+      setVersionB(selectedB)
+      setLoading(false)
+    }
+
+    void loadVersions()
+
+    return () => {
+      isMounted = false
+    }
+  }, [open, projectId, initialVersionId])
+
+  useEffect(() => {
+    if (!open) return
+    ;[versionA, versionB].filter(Boolean).forEach((versionId) => {
+      if (details[versionId]) return
+      getVersionDetailAction(versionId, projectId).then((result) => {
+        if (result.error || !result.data) {
+          toast.error(result.error ?? 'No se pudo cargar la version')
+          return
+        }
+        setDetails((current) => ({ ...current, [versionId]: result.data }))
+      })
+    })
+  }, [details, open, projectId, versionA, versionB])
+
+  const selectedA = versions.find((version) => version.id === versionA)
+  const selectedB = versions.find((version) => version.id === versionB)
+  const detailA = details[versionA]
+  const detailB = details[versionB]
+  const detailsLoading = Boolean(versionA && versionB && (!detailA || !detailB))
+  const codeA = detailA?.snapshots[dialect] ?? ''
+  const codeB = detailB?.snapshots[dialect] ?? ''
+  const hasDiff = codeA.trim() !== codeB.trim()
+  const diff = useMemo(() => buildLineDiff(codeA, codeB), [codeA, codeB])
+  const changedObjects = useMemo(() => extractChangedObjects(diff.rows), [diff.rows])
+  const filteredObjects = changedObjects.filter((item) => item.name.toLowerCase().includes(search.toLowerCase()))
+  const activeDialect = DIALECTS.find((item) => item.value === dialect) ?? DIALECTS[0]
+  const language = dialect === 'json' ? 'json' : 'sql'
 
   return (
     <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-      <DialogContent className="flex h-[86vh] w-[min(1200px,96vw)] max-w-none flex-col gap-0 overflow-hidden border-[#1E2A45] bg-[#0B1322] p-0 text-white">
-        <DialogHeader className="border-b border-[#1E2A45] bg-[#0D1424] p-4">
-          <DialogTitle className="flex items-center gap-3 text-base">
-            <span className="rounded-lg bg-[#1A6CF6]/15 p-2 text-[#60A5FA]"><GitCompareArrows size={18} /></span>
-            Comparación de versiones
-            <span className="rounded-full border border-[#1E2A45] px-3 py-1 font-mono text-xs text-[#94A3B8]">{versionLabel}</span>
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="flex h-[90vh] w-[96vw] max-w-full sm:max-w-[1320px] flex-col gap-0 overflow-hidden border-[#1E2A45] bg-[#0B1322] p-0 text-white">
+        <div className="flex items-center justify-between border-b border-[#1E2A45] bg-[#0D1424] px-5 py-3">
+          <div className="min-w-0">
+            <DialogTitle className="text-base font-semibold">Comparacion de commits</DialogTitle>
+            <p className="mt-0.5 truncate text-xs text-[#94A3B8]">
+              Compara snapshots guardados por formato.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="hidden items-center gap-1.5 rounded-md border border-[#1E2A45] bg-[#07101F] px-2 py-1.5 text-[11px] text-[#B6C7E3] md:flex">
+              <CheckCircle2 size={14} className="text-[#60A5FA]" />
+              Snapshots
+            </div>
+            <button onClick={onClose} className="rounded-md border border-[#1E2A45] p-1.5 text-[#C7D2FE] hover:bg-[#111827]" aria-label="Cerrar">
+              <X size={16} />
+            </button>
+          </div>
+        </div>
 
-        {!hasDiff ? (
-          <div className="flex flex-1 flex-col items-center justify-center text-[#94A3B8]">
-            <CheckCircle2 className="mb-4 h-12 w-12 text-[#10B981]" />
-            <p className="text-lg text-white">No hay diferencias entre estas versiones</p>
-            <p className="text-sm">El SQL actual coincide con la versión seleccionada.</p>
+        {loading || versions.length < 2 ? (
+          <div className="flex flex-1 flex-col items-center justify-center px-6 text-center text-[#94A3B8]">
+            {loading ? (
+              <>
+                <div className="mb-4 h-12 w-12 animate-spin rounded-full border-2 border-[#1A6CF6] border-t-transparent" />
+                <p>Cargando versiones...</p>
+              </>
+            ) : (
+              <>
+                <GitCompareArrows className="mb-4 h-12 w-12 text-[#1A6CF6]" />
+                <p className="text-lg text-white">Necesitas al menos dos commits</p>
+                <p className="text-sm">Guarda otra version para poder comparar cambios.</p>
+              </>
+            )}
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-3 gap-3 border-b border-[#1E2A45] bg-[#07101F] p-3">
-              <SummaryCard tone="red" label="Líneas eliminadas" value={diff.removed} />
-              <SummaryCard tone="green" label="Líneas agregadas" value={diff.added} />
-              <SummaryCard tone="blue" label="Total cambios" value={diff.added + diff.removed} />
+            <div className="grid grid-cols-[minmax(180px,240px)_auto_minmax(180px,240px)_1fr] items-end gap-3 border-b border-[#1E2A45] bg-[#091221] px-4 py-3">
+              <VersionPicker label="Version A" value={versionA} versions={versions} onChange={setVersionA} />
+              <div className="flex h-8 items-center">
+                <span className="rounded-md border border-[#1E2A45] bg-[#0D1424] p-1.5 text-[#C7D2FE]">
+                  <GitCompareArrows size={16} />
+                </span>
+              </div>
+              <VersionPicker label="Version B" value={versionB} versions={versions} onChange={setVersionB} />
+              <div className="min-w-0">
+                <div className="mb-1.5 text-xs font-semibold text-[#B6C7E3]">Formato</div>
+                <div className="grid grid-cols-4 gap-2">
+                  {DIALECTS.map(({ value, label, icon: Icon, tone }) => (
+                    <button
+                      key={value}
+                      onClick={() => setDialect(value)}
+                      className={`flex min-w-0 items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-xs transition ${
+                        dialect === value
+                          ? 'border-[#1A6CF6] bg-[#123A79] text-white'
+                          : 'border-[#1E2A45] bg-[#07101F] text-[#94A3B8] hover:text-white'
+                      }`}
+                    >
+                      <Icon size={14} className={tone} />
+                      <span className="truncate">{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            <div className="grid min-h-0 flex-1 grid-cols-[1fr_320px]">
-              <div className="min-h-0">
-                <div className="grid grid-cols-2 border-b border-[#1E2A45] bg-[#111827] text-xs font-semibold text-[#94A3B8]">
-                  <div className="border-r border-[#1E2A45] px-4 py-2">Versión antigua</div>
-                  <div className="px-4 py-2">Versión actual</div>
-                </div>
-                <DiffEditor
-                  original={originalCode}
-                  modified={modifiedCode}
-                  language="sql"
-                  theme={resolvedTheme === 'dark' ? 'vs-dark' : 'light'}
-                  options={{
-                    readOnly: true,
-                    renderSideBySide: true,
-                    minimap: { enabled: false },
-                    fontSize: 13,
-                    wordWrap: 'on',
-                    scrollBeyondLastLine: false,
-                    padding: { top: 12 },
-                    renderOverviewRuler: true,
-                  }}
-                />
-              </div>
+            <div className="grid grid-cols-4 gap-2 border-b border-[#1E2A45] bg-[#07101F] px-4 py-2">
+              <SummaryCard tone="red" label="Lineas eliminadas" value={diff.removed} icon={Minus} />
+              <SummaryCard tone="green" label="Lineas agregadas" value={diff.added} icon={Plus} />
+              <SummaryCard tone="blue" label="Cambios totales" value={diff.added + diff.removed} icon={Code2} />
+              <SummaryCard tone="purple" label="Objetos modificados" value={changedObjects.length} icon={Table2} />
+            </div>
 
-              <aside className="min-h-0 overflow-y-auto border-l border-[#1E2A45] bg-[#0D1424] p-3">
-                <h3 className="mb-3 text-sm font-semibold text-[#E2E8F0]">Cambios detectados</h3>
-                <div className="space-y-2">
-                  {diff.rows.length === 0 ? (
-                    <p className="text-xs text-[#94A3B8]">Hay cambios de formato o espacios.</p>
-                  ) : diff.rows.slice(0, 80).map((row, index) => (
-                    <div key={`${row.type}-${index}`} className={`rounded-lg border p-2 text-xs ${row.type === 'added' ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200' : 'border-red-500/20 bg-red-500/10 text-red-200'}`}>
-                      {row.type === 'added' ? <Plus className="mr-1 inline h-3 w-3" /> : <Minus className="mr-1 inline h-3 w-3" />}
-                      <code className="break-words">{row.text.trim()}</code>
+            <div className="grid min-h-0 flex-1 grid-cols-[170px_1fr]">
+              <aside className="flex min-h-0 flex-col border-r border-[#1E2A45] bg-[#0A1220] p-3">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-2.5 top-2 h-3.5 w-3.5 text-[#64748B]" />
+                  <input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Buscar objeto..."
+                    className="h-8 w-full rounded-md border border-[#1E2A45] bg-[#07101F] pl-8 pr-2 text-xs text-white outline-none placeholder:text-[#64748B] focus:border-[#1A6CF6]"
+                  />
+                </div>
+                <div className="mt-3 flex items-center justify-between text-xs font-semibold text-[#E2E8F0]">
+                  <span>Objetos</span>
+                  <span className="rounded-md border border-[#1E2A45] px-2 py-0.5 text-xs text-[#94A3B8]">{filteredObjects.length}</span>
+                </div>
+                <div className="mt-2 min-h-0 flex-1 space-y-1.5 overflow-y-auto">
+                  {filteredObjects.length === 0 ? (
+                    <p className="rounded-md border border-[#1E2A45] p-2 text-xs text-[#94A3B8]">
+                      {hasDiff ? 'Hay cambios de lineas sin objeto detectado.' : 'Sin cambios en este formato.'}
+                    </p>
+                  ) : filteredObjects.map((item) => (
+                    <div key={item.name} className="flex items-center justify-between rounded-md border border-[#1E2A45] bg-[#0D1424] px-2 py-1.5 text-xs text-[#E2E8F0]">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <Table2 size={13} className="shrink-0 text-[#60A5FA]" />
+                        <span className="truncate">{item.name}</span>
+                      </span>
+                      <span className="rounded bg-[#123A79] px-1.5 py-0.5 text-[11px] text-[#BFDBFE]">{item.changes}</span>
                     </div>
                   ))}
                 </div>
               </aside>
+
+              <section className="flex min-h-0 flex-col">
+                <div className="flex h-10 items-center gap-2 border-b border-[#1E2A45] bg-[#0D1424] px-3">
+                  <button
+                    onClick={() => setSideBySide(true)}
+                    className={`rounded-md border px-2.5 py-1 text-xs ${sideBySide ? 'border-[#1A6CF6] bg-[#123A79] text-white' : 'border-[#1E2A45] text-[#94A3B8]'}`}
+                  >
+                    Dividida
+                  </button>
+                  <button
+                    onClick={() => setSideBySide(false)}
+                    className={`rounded-md border px-2.5 py-1 text-xs ${!sideBySide ? 'border-[#1A6CF6] bg-[#123A79] text-white' : 'border-[#1E2A45] text-[#94A3B8]'}`}
+                  >
+                    Unificada
+                  </button>
+                  <Toggle checked={syncScroll} onChange={setSyncScroll} label="Sincronizar scroll" />
+                  <Toggle checked={hideUnchanged} onChange={setHideUnchanged} label="Mostrar solo cambios" />
+                </div>
+
+                <div className="grid grid-cols-2 border-b border-[#1E2A45] bg-[#111827] text-[11px] font-semibold text-[#B6C7E3]">
+                  <div className="border-r border-[#1E2A45] px-4 py-1.5">
+                    Version A - v{selectedA?.versionNumber} - {activeDialect.label}
+                  </div>
+                  <div className="px-4 py-1.5">
+                    Version B - v{selectedB?.versionNumber} - {activeDialect.label}
+                  </div>
+                </div>
+
+                {detailsLoading ? (
+                  <div className="flex flex-1 flex-col items-center justify-center text-[#94A3B8]">
+                    <div className="mb-4 h-10 w-10 animate-spin rounded-full border-2 border-[#1A6CF6] border-t-transparent" />
+                    <p className="text-sm">Cargando snapshots de los commits...</p>
+                  </div>
+                ) : !hasDiff && detailA && detailB ? (
+                  <div className="flex flex-1 flex-col items-center justify-center text-[#94A3B8]">
+                    <CheckCircle2 className="mb-4 h-12 w-12 text-[#10B981]" />
+                    <p className="text-lg text-white">No hay diferencias en {activeDialect.label}</p>
+                    <p className="text-sm">Los snapshots seleccionados coinciden.</p>
+                  </div>
+                ) : (
+                  <div className="min-h-0 flex-1">
+                    <DiffEditor
+                      key={`${versionA}-${versionB}-${dialect}-${sideBySide}-${hideUnchanged}`}
+                      original={codeA}
+                      modified={codeB}
+                      language={language}
+                      theme={resolvedTheme === 'dark' ? 'vs-dark' : 'light'}
+                      options={{
+                        readOnly: true,
+                        renderSideBySide: sideBySide,
+                        originalEditable: false,
+                        minimap: { enabled: false },
+                        fontSize: 13,
+                        wordWrap: 'on',
+                        scrollBeyondLastLine: false,
+                        padding: { top: 12 },
+                        renderOverviewRuler: true,
+                        ignoreTrimWhitespace: false,
+                        enableSplitViewResizing: true,
+                        hideUnchangedRegions: { enabled: hideUnchanged },
+                        scrollBeyondLastColumn: 0,
+                        scrollbar: {
+                          alwaysConsumeMouseWheel: false,
+                          useShadows: syncScroll,
+                        },
+                      }}
+                    />
+                  </div>
+                )}
+              </section>
             </div>
+
           </>
         )}
       </DialogContent>
@@ -115,17 +359,78 @@ export function DiffViewerModal({ open, onClose, originalCode, modifiedCode, ver
   )
 }
 
-function SummaryCard({ label, value, tone }: { label: string; value: number; tone: 'red' | 'green' | 'blue' }) {
+function VersionPicker({
+  label,
+  value,
+  versions,
+  onChange,
+}: {
+  label: string
+  value: string
+  versions: VersionData[]
+  onChange: (value: string) => void
+}) {
+  const selected = versions.find((version) => version.id === value)
+
+  return (
+    <label className="block min-w-0">
+      <span className="mb-1.5 block text-xs font-semibold text-[#B6C7E3]">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-8 w-full rounded-md border border-[#1E2A45] bg-[#07101F] px-2 font-mono text-xs text-white outline-none focus:border-[#1A6CF6]"
+      >
+        {versions.map((version) => (
+          <option key={version.id} value={version.id}>
+            v{version.versionNumber} - {version.message}
+          </option>
+        ))}
+      </select>
+      <span className="mt-1 block truncate text-[11px] text-[#94A3B8]">
+        {selected ? `${relativeDate(selected.createdAt)} - ${selected.authorName ?? 'Tu equipo'}` : 'Selecciona una version'}
+      </span>
+    </label>
+  )
+}
+
+function SummaryCard({
+  label,
+  value,
+  tone,
+  icon: Icon,
+}: {
+  label: string
+  value: number
+  tone: 'red' | 'green' | 'blue' | 'purple'
+  icon: ElementType
+}) {
   const tones = {
     red: 'border-red-500/20 bg-red-500/10 text-red-200',
     green: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200',
     blue: 'border-[#1A6CF6]/20 bg-[#1A6CF6]/10 text-[#BFDBFE]',
+    purple: 'border-purple-500/20 bg-purple-500/10 text-purple-200',
   }
 
   return (
-    <div className={`rounded-xl border px-4 py-3 ${tones[tone]}`}>
-      <div className="text-2xl font-semibold">{value}</div>
-      <div className="text-xs opacity-80">{label}</div>
+    <div className={`flex items-center gap-2 rounded-md border px-3 py-1.5 ${tones[tone]}`}>
+      <span className="rounded bg-black/15 p-1.5">
+        <Icon size={14} />
+      </span>
+      <span className="min-w-0">
+        <span className="mr-1.5 text-base font-semibold">{value}</span>
+        <span className="text-[11px] opacity-80">{label}</span>
+      </span>
     </div>
+  )
+}
+
+function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (checked: boolean) => void; label: string }) {
+  return (
+    <button onClick={() => onChange(!checked)} className="ml-auto flex items-center gap-2 text-xs text-[#E2E8F0] first:ml-0">
+      <span className={`flex h-4 w-7 items-center rounded-full p-0.5 transition ${checked ? 'bg-[#1A6CF6]' : 'bg-[#334155]'}`}>
+        <span className={`h-3 w-3 rounded-full bg-white transition ${checked ? 'translate-x-3' : ''}`} />
+      </span>
+      {label}
+    </button>
   )
 }

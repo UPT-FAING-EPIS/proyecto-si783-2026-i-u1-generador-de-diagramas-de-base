@@ -19,7 +19,6 @@ import { useCollaboratorCursors } from '@/hooks/useCollaboratorCursors'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import { saveDiagramAction } from '@/lib/backend/actions/diagrams/save'
 import { restoreVersionAction } from '@/lib/backend/actions/versions/restore'
-import { getVersionDetailAction } from '@/lib/backend/actions/versions/detail'
 import { getSchemaStats, type EditorDialect } from '@/lib/editor-schema'
 import { toFlowJson } from '@/lib/flow-types'
 
@@ -67,7 +66,7 @@ function EditorLayoutInner({
   const [savedLabel, setSavedLabel] = useState('Listo para editar')
   const [showSqlPanel, setShowSqlPanel] = useState(true)
   const [showInspector, setShowInspector] = useState(true)
-  const [diffModal, setDiffModal] = useState<{ open: boolean; originalCode: string; modifiedCode: string; versionLabel: string } | null>(null)
+  const [diffModal, setDiffModal] = useState<{ open: boolean; initialVersionId?: string } | null>(null)
 
   const [sqlWidth, setSqlWidth] = useState(450)
   const isResizing = useRef(false)
@@ -152,23 +151,13 @@ function EditorLayoutInner({
 
     const flow = toFlowJson(result.flowJson)
     setSqlValue(result.sqlContent ?? '')
+    setDialect((result.dialect as EditorDialect) || 'postgresql')
     setNodesAndEdges(flow.nodes ?? [], flow.edges ?? [])
     toast.success(`Versión v${result.versionNumber} restaurada`)
   }
 
-  async function handleCompare(versionId: string, versionNumber: number) {
-    const result = await getVersionDetailAction(versionId)
-    if (result.error || !result.data) {
-      toast.error(result.error ?? 'No se pudo cargar la versión')
-      return
-    }
-
-    setDiffModal({
-      open: true,
-      originalCode: result.data.sqlContent ?? '',
-      modifiedCode: sqlValue,
-      versionLabel: `v${versionNumber} vs actual`,
-    })
+  function handleCompare(versionId: string) {
+    setDiffModal({ open: true, initialVersionId: versionId })
   }
 
   function handleValidate() {
@@ -288,9 +277,8 @@ function EditorLayoutInner({
       <DiffViewerModal
         open={diffModal?.open ?? false}
         onClose={() => setDiffModal(null)}
-        originalCode={diffModal?.originalCode ?? ''}
-        modifiedCode={diffModal?.modifiedCode ?? ''}
-        versionLabel={diffModal?.versionLabel ?? ''}
+        projectId={projectId}
+        initialVersionId={diffModal?.initialVersionId}
       />
     </div>
   )

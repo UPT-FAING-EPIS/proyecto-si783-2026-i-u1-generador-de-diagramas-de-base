@@ -9,7 +9,6 @@ import { ExportMenu } from './ExportMenu'
 import { CommitModal } from './CommitModal'
 import { VersionHistorySheet } from './VersionHistorySheet'
 import { restoreVersionAction } from '@/lib/backend/actions/versions/restore'
-import { getVersionDetailAction } from '@/lib/backend/actions/versions/detail'
 import { DiffViewerModal } from './DiffViewerModal'
 import { PublicShareToggle } from './PublicShareToggle'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -73,7 +72,7 @@ export function EditorToolbar({ projectId, projectName, dialect = 'postgresql', 
   const sqlValue = useEditorStore((state) => state.sqlValue)
   const [saving, setSaving] = useState(false)
 
-  const [diffModal, setDiffModal] = useState<{ open: boolean; originalCode: string; modifiedCode: string; versionLabel: string } | null>(null)
+  const [diffModal, setDiffModal] = useState<{ open: boolean; initialVersionId?: string } | null>(null)
 
   const handleSave = async () => {
     setSaving(true)
@@ -121,21 +120,8 @@ export function EditorToolbar({ projectId, projectName, dialect = 'postgresql', 
     }
   }
 
-  const handleCompare = async (versionId: string, versionNumber: number) => {
-    const result = await getVersionDetailAction(versionId)
-    if (result.error || !result.data) {
-      toast.error(result.error ?? 'No se pudo cargar la versión')
-      return
-    }
-
-    const currentSQL = useEditorStore.getState().sqlValue ?? ''
-    
-    setDiffModal({
-      open: true,
-      originalCode: result.data.sqlContent ?? '',
-      modifiedCode: currentSQL,
-      versionLabel: `v${versionNumber} vs actual`
-    })
+  const handleCompare = (versionId: string) => {
+    setDiffModal({ open: true, initialVersionId: versionId })
   }
 
   return (
@@ -173,9 +159,8 @@ export function EditorToolbar({ projectId, projectName, dialect = 'postgresql', 
       <DiffViewerModal
         open={diffModal?.open ?? false}
         onClose={() => setDiffModal(null)}
-        originalCode={diffModal?.originalCode ?? ''}
-        modifiedCode={diffModal?.modifiedCode ?? ''}
-        versionLabel={diffModal?.versionLabel ?? ''}
+        projectId={projectId}
+        initialVersionId={diffModal?.initialVersionId}
       />
     </TooltipProvider>
   )
