@@ -57,6 +57,8 @@ function processJsonObject(obj: Record<string, unknown>): ParseResult {
   const nodes: FlowNode[] = []
   const edges: FlowEdge[] = []
 
+  if (!obj || typeof obj !== 'object') return { nodes: [], edges: [], errors: [] }
+
   const isJsonSchema = obj.$schema !== undefined || obj.properties !== undefined
 
   if (isJsonSchema) {

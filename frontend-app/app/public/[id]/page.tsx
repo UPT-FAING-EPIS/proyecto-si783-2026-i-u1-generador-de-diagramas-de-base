@@ -6,6 +6,7 @@ import { collaborators, diagrams, projects, users } from '@/lib/backend/db/schem
 import { and, eq } from 'drizzle-orm'
 import { toFlowJson } from '@/lib/flow-types'
 import { createClient } from '@/lib/backend/supabase/server'
+import { addViewerToProject } from '@/lib/backend/actions/projects/addViewer'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,6 +51,7 @@ export default async function PublicPage({ params }: PublicPageProps) {
       isPublic: diagrams.isPublic,
       shareAccess: diagrams.shareAccess,
       projectName: projects.name,
+      projectOwnerId: projects.ownerId,
     })
     .from(diagrams)
     .innerJoin(projects, eq(projects.id, diagrams.projectId))
@@ -57,6 +59,11 @@ export default async function PublicPage({ params }: PublicPageProps) {
     .limit(1)
 
   if (!diagram) notFound()
+
+  // Registrar al usuario autenticado como viewer si no es el owner
+  if (diagram.projectOwnerId !== dbUser.id) {
+    await addViewerToProject(id, dbUser.id)
+  }
 
   const [membership] = await db
     .select({ role: collaborators.role })

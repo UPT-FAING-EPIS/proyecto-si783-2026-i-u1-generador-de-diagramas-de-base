@@ -2,40 +2,27 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname, useSearchParams } from 'next/navigation';
 import { Home, Clock, Users, Trash2, History, LogOut, Settings } from 'lucide-react';
 import { logoutAction } from '@/lib/backend/actions/auth/logout';
 import { getInitials, getAvatarColor } from '@/lib/utils/avatar';
 
 const NAV_ITEMS = [
-  { icon: Home, label: 'Proyectos', href: '/dashboard' },
-  { icon: Clock, label: 'Recientes', href: '/dashboard?section=recientes' },
-  { icon: Users, label: 'Compartidos', href: '/dashboard?section=compartidos' },
-  { icon: Trash2, label: 'Papelera', href: '/dashboard?section=papelera' },
-  { icon: History, label: 'Historial', href: '/dashboard?section=historial' }
+  { icon: Home, label: 'Proyectos', id: 'proyectos' },
+  { icon: Clock, label: 'Recientes', id: 'recientes' },
+  { icon: Users, label: 'Compartidos', id: 'compartidos' },
+  { icon: Trash2, label: 'Papelera', id: 'papelera' },
+  { icon: History, label: 'Historial', id: 'historial' }
 ];
 
 interface DashboardSidebarProps {
   userName: string
   userEmail?: string
   userAvatarUrl?: string | null
+  activeSection: string
+  onSectionChange: (section: string) => void
 }
 
-export function DashboardSidebar({ userName, userEmail, userAvatarUrl }: DashboardSidebarProps) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const currentSection = searchParams.get('section');
-
-  const isActive = (href: string) => {
-    if (href === '/dashboard') {
-      return pathname === '/dashboard' && !currentSection;
-    }
-    const sectionMatch = href.match(/section=([^&]+)/);
-    if (sectionMatch) {
-      return currentSection === sectionMatch[1];
-    }
-    return false;
-  };
+export function DashboardSidebar({ userName, userEmail, userAvatarUrl, activeSection, onSectionChange }: DashboardSidebarProps) {
 
   return (
     <aside className="hidden lg:flex flex-col w-[220px] flex-shrink-0 h-screen sticky top-0"
@@ -51,22 +38,31 @@ export function DashboardSidebar({ userName, userEmail, userAvatarUrl }: Dashboa
 
       {/* Nav items */}
       <nav className="flex-1 px-2 py-4 flex flex-col gap-0.5">
-        {NAV_ITEMS.map(({ icon: Icon, label, href }) => (
-          <Link key={label} href={href}
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors"
-            style={{
-              backgroundColor: isActive(href) ? '#1E2A45' : 'transparent',
-              color: isActive(href) ? '#FFFFFF' : '#6B7280',
-            }}>
-            <Icon size={16} />
-            {label}
-          </Link>
-        ))}
+        {NAV_ITEMS.map(({ icon: Icon, label, id }) => {
+          const isActive = activeSection === id
+          
+          return (
+            <button
+              key={id}
+              onClick={() => onSectionChange(id)}
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors border-l-2 w-full ${
+                isActive
+                  ? 'bg-blue-600/20 text-blue-400 border-blue-500'
+                  : 'text-gray-400 hover:bg-gray-800 border-transparent'
+              }`}>
+              <Icon size={16} />
+              {label}
+            </button>
+          )
+        })}
       </nav>
 
       {/* Usuario en la parte inferior */}
       <div className="px-3 py-4" style={{ borderTop: '1px solid #1E2A45' }}>
-        <div className="flex items-center gap-2.5 mb-3 px-1">
+        <Link
+          href="/profile"
+          className="flex items-center gap-2.5 mb-3 px-1 rounded-lg transition-colors hover:bg-[#1E2A45]"
+        >
           {userAvatarUrl ? (
             <Image
               src={userAvatarUrl}
@@ -87,7 +83,7 @@ export function DashboardSidebar({ userName, userEmail, userAvatarUrl }: Dashboa
             <p className="text-sm text-white font-medium truncate">{userName}</p>
             {userEmail && <p className="text-xs truncate" style={{ color: '#6B7280' }}>{userEmail}</p>}
           </div>
-        </div>
+        </Link>
         <Link
           href="/profile"
           className="flex items-center gap-2 text-xs w-full px-3 py-2 rounded-lg transition-colors hover:text-white mb-1"

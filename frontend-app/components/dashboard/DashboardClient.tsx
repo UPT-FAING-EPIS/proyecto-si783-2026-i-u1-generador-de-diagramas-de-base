@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Search, LayoutGrid, List, X } from 'lucide-react'
+import { Search, LayoutGrid, List, X, Plus } from 'lucide-react'
 import { ProjectGrid } from './ProjectGrid'
 import { ProjectListView } from './ProjectListView'
 import { CreateProjectModal } from './CreateProjectModal'
+import { HistorialSection } from './HistorialSection'
 
 interface ProjectItem {
   project: {
@@ -14,6 +15,7 @@ interface ProjectItem {
     updatedAt: Date
     createdAt?: Date
     ownerId: string
+    deleted_at?: string | Date | null
   }
   role: string
   members?: { id: string; name: string }[]
@@ -23,10 +25,13 @@ interface DashboardClientProps {
   projects: ProjectItem[]
   currentUserId: string
   currentUser?: { id: string; name: string } | null
+  activeSection: string
+  onSectionChange: (section: string) => void
 }
 
-export function DashboardClient({ projects, currentUserId, currentUser }: DashboardClientProps) {
+export function DashboardClient({ projects, currentUserId, currentUser, activeSection, onSectionChange }: DashboardClientProps) {
   const [query, setQuery] = useState('')
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
     try {
       if (typeof window === 'undefined') return 'grid'
@@ -42,19 +47,54 @@ export function DashboardClient({ projects, currentUserId, currentUser }: Dashbo
     try { localStorage.setItem('dbcanvas_view_mode', mode) } catch {}
   }
 
-  // Filtrado en tiempo real
-  const filtered = useMemo(() =>
-    projects.filter(item =>
+  // Filtrado según sección activa + búsqueda
+  const filtered = useMemo(() => {
+    let result = projects
+
+    // Filtrar según sección
+    switch (activeSection) {
+      case 'proyectos':
+        result = result.filter(item => !item.project.deleted_at)
+        break
+      case 'recientes':
+        result = result
+          .filter(item => !item.project.deleted_at)
+          .sort((a, b) => new Date(b.project.updatedAt).getTime() - new Date(a.project.updatedAt).getTime())
+          .slice(0, 5)
+        break
+      case 'compartidos':
+        result = result.filter(item => item.role !== 'owner' && !item.project.deleted_at)
+        break
+      case 'papelera':
+        result = result.filter(item => item.project.deleted_at)
+        break
+      case 'historial':
+        result = []
+        break
+      default:
+        result = result.filter(item => !item.project.deleted_at)
+    }
+
+    // Aplicar búsqueda
+    return result.filter(item =>
       item.project.name.toLowerCase().includes(query.toLowerCase())
-    ), [projects, query])
+    )
+  }, [projects, query, activeSection])
 
   return (
     <div>
       {/* Header: título + acciones */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-semibold text-[#E2E8F0]">Mis Proyectos</h2>
-        <CreateProjectModal />
+        <button
+          onClick={() => setIsCreateProjectOpen(true)}
+          className="bg-[#1A6CF6] hover:bg-blue-700 text-white shadow-lg shadow-[#1A6CF6]/20 transition-all hover:-translate-y-[1px] flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+        >
+          <Plus className="w-4 h-4" />
+          Crear Proyecto
+        </button>
       </div>
+      <CreateProjectModal open={isCreateProjectOpen} onOpenChange={setIsCreateProjectOpen} />
 
       {/* Toolbar: búsqueda + toggle */}
       <div className="flex items-center gap-3 mb-6">
@@ -118,7 +158,9 @@ export function DashboardClient({ projects, currentUserId, currentUser }: Dashbo
       </div>
 
       {/* Contenido */}
-      {filtered.length === 0 && query ? (
+      {activeSection === 'historial' ? (
+        <HistorialSection userId={currentUserId} />
+      ) : filtered.length === 0 && query ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <p className="text-white font-medium mb-1">
             Sin resultados para &ldquo;{query}&rdquo;
@@ -133,6 +175,15 @@ export function DashboardClient({ projects, currentUserId, currentUser }: Dashbo
           >
             Limpiar búsqueda
           </button>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <p className="text-white font-medium mb-1">
+            Sin proyectos en esta sección
+          </p>
+          <p className="text-sm" style={{ color: '#6B7280' }}>
+            Crea un nuevo proyecto para comenzar
+          </p>
         </div>
       ) : viewMode === 'grid' ? (
         <ProjectGrid

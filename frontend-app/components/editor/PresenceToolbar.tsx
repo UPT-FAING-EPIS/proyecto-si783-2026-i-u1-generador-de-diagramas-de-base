@@ -10,14 +10,21 @@ interface PresenceToolbarProps {
 
 export function PresenceToolbar({ projectId, currentUser }: PresenceToolbarProps) {
   const presenceUsers = usePresence(projectId, currentUser)
-  const users = [
+  
+  // Combinar currentUser con presencia y eliminar duplicados por user_id
+  const allUsers = [
     { user_id: currentUser.id, name: currentUser.name, joined_at: '' },
-    ...presenceUsers.filter((user) => user.user_id !== currentUser.id),
+    ...presenceUsers
   ]
+  
+  // Eliminar duplicados manteniendo el currentUser优先
+  const uniqueUsers = Array.from(
+    new Map(allUsers.map(user => [user.user_id, user])).values()
+  )
 
   return (
     <div className="flex items-center gap-1 rounded-xl border border-[#1E2A45] bg-[#0A0F1E] px-2 py-1">
-      {users.slice(0, 5).map((user, index) => (
+      {uniqueUsers.slice(0, 5).map((user: { user_id: string; name: string; joined_at: string }, index: number) => (
         <div
           key={user.user_id}
           title={user.user_id === currentUser.id ? `${user.name} (tú)` : user.name}
@@ -33,7 +40,7 @@ export function PresenceToolbar({ projectId, currentUser }: PresenceToolbarProps
           {getInitials(user.name)}
         </div>
       ))}
-      {users.length > 5 && <span className="ml-1 text-xs text-[#94A3B8]">+{users.length - 5}</span>}
+      {uniqueUsers.length > 5 && <span className="ml-1 text-xs text-[#94A3B8]">+{uniqueUsers.length - 5}</span>}
     </div>
   )
 }

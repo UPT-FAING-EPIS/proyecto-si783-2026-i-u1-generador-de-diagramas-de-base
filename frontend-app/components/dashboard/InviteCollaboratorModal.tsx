@@ -9,8 +9,23 @@ import { toast } from 'sonner'
 import { inviteCollaboratorAction } from '@/lib/backend/actions/projects/invite'
 import { UserPlus } from 'lucide-react'
 
-export function InviteCollaboratorModal({ projectId }: { projectId: string }) {
-  const [open, setOpen] = useState(false)
+interface InviteCollaboratorModalProps {
+  projectId: string
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
+
+export function InviteCollaboratorModal({ 
+  projectId, 
+  open: externalOpen, 
+  onOpenChange 
+}: InviteCollaboratorModalProps) {
+  const [localOpen, setLocalOpen] = useState(false)
+  const open = externalOpen !== undefined ? externalOpen : localOpen
+  const setOpen = (newOpen: boolean) => {
+    setLocalOpen(newOpen)
+    onOpenChange?.(newOpen)
+  }
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
 
