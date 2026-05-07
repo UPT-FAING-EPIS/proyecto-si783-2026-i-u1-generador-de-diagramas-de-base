@@ -14,6 +14,7 @@ interface ProjectItem {
     updatedAt: Date
     createdAt?: Date
     ownerId: string
+    deleted_at?: Date | null
   }
   role: string
   members?: { id: string; name: string }[]
@@ -23,9 +24,11 @@ interface DashboardClientProps {
   projects: ProjectItem[]
   currentUserId: string
   currentUser?: { id: string; name: string } | null
+  activeSection: string
+  onSectionChange: (section: string) => void
 }
 
-export function DashboardClient({ projects, currentUserId, currentUser }: DashboardClientProps) {
+export function DashboardClient({ projects, currentUserId, currentUser, activeSection, onSectionChange }: DashboardClientProps) {
   const [query, setQuery] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
     try {
@@ -42,11 +45,39 @@ export function DashboardClient({ projects, currentUserId, currentUser }: Dashbo
     try { localStorage.setItem('dbcanvas_view_mode', mode) } catch {}
   }
 
-  // Filtrado en tiempo real
-  const filtered = useMemo(() =>
-    projects.filter(item =>
+  // Filtrado según sección activa + búsqueda
+  const filtered = useMemo(() => {
+    let result = projects
+
+    // Filtrar según sección
+    switch (activeSection) {
+      case 'proyectos':
+        result = result.filter(item => !item.project.deleted_at)
+        break
+      case 'recientes':
+        result = result
+          .filter(item => !item.project.deleted_at)
+          .sort((a, b) => new Date(b.project.updatedAt).getTime() - new Date(a.project.updatedAt).getTime())
+          .slice(0, 5)
+        break
+      case 'compartidos':
+        result = result.filter(item => item.role !== 'owner' && !item.project.deleted_at)
+        break
+      case 'papelera':
+        result = result.filter(item => item.project.deleted_at)
+        break
+      case 'historial':
+        result = []
+        break
+      default:
+        result = result.filter(item => !item.project.deleted_at)
+    }
+
+    // Aplicar búsqueda
+    return result.filter(item =>
       item.project.name.toLowerCase().includes(query.toLowerCase())
-    ), [projects, query])
+    )
+  }, [projects, query, activeSection])
 
   return (
     <div>
@@ -118,7 +149,14 @@ export function DashboardClient({ projects, currentUserId, currentUser }: Dashbo
       </div>
 
       {/* Contenido */}
-      {filtered.length === 0 && query ? (
+      {activeSection === 'historial' ? (
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <p className="text-white font-medium mb-1">Historial no disponible</p>
+          <p className="text-sm" style={{ color: '#6B7280' }}>
+            Esta sección se habilitará en futuras versiones
+          </p>
+        </div>
+      ) : filtered.length === 0 && query ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <p className="text-white font-medium mb-1">
             Sin resultados para &ldquo;{query}&rdquo;
@@ -133,6 +171,15 @@ export function DashboardClient({ projects, currentUserId, currentUser }: Dashbo
           >
             Limpiar búsqueda
           </button>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <p className="text-white font-medium mb-1">
+            Sin proyectos en esta sección
+          </p>
+          <p className="text-sm" style={{ color: '#6B7280' }}>
+            Crea un nuevo proyecto para comenzar
+          </p>
         </div>
       ) : viewMode === 'grid' ? (
         <ProjectGrid
