@@ -5,6 +5,7 @@ import { Search, LayoutGrid, List, X, Plus } from 'lucide-react'
 import { ProjectGrid } from './ProjectGrid'
 import { ProjectListView } from './ProjectListView'
 import { CreateProjectModal } from './CreateProjectModal'
+import { HistorialSection } from './HistorialSection'
 
 interface ProjectItem {
   project: {
@@ -158,12 +159,7 @@ export function DashboardClient({ projects, currentUserId, currentUser, activeSe
 
       {/* Contenido */}
       {activeSection === 'historial' ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center">
-          <p className="text-white font-medium mb-1">Historial no disponible</p>
-          <p className="text-sm" style={{ color: '#6B7280' }}>
-            Esta sección se habilitará en futuras versiones
-          </p>
-        </div>
+        <HistorialSection userId={currentUserId} />
       ) : filtered.length === 0 && query ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <p className="text-white font-medium mb-1">

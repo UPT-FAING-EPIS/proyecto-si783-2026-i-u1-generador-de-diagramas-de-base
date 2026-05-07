@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import { EditorLayout } from '@/components/editor/EditorLayout'
 import { loadDiagramAction } from '@/lib/backend/actions/diagrams/load'
 import { toFlowJson } from '@/lib/flow-types'
+import { logActivity } from '@/lib/backend/actions/activity/logActivity'
 
 export const dynamic = 'force-dynamic'
 
@@ -62,6 +63,11 @@ export default async function EditorPage({ params }: EditorPageProps) {
   if (error || !diagramData) {
     redirect('/dashboard')
   }
+
+  // Registrar actividad de abrir proyecto
+  await logActivity(dbUser.id, 'project_opened', projectId, {
+    projectName: access.project.name
+  })
 
   const savedFlow = toFlowJson(diagramData.flowJson)
   const initialNodes = savedFlow.nodes ?? []
