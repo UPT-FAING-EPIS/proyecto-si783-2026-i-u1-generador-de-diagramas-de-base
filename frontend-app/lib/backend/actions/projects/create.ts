@@ -6,6 +6,7 @@ import { db } from '../../db'
 import { projects, collaborators, users } from '../../db/schema'
 import { revalidatePath } from 'next/cache'
 import { eq } from 'drizzle-orm'
+import { logActivity } from '../activity/logActivity'
 
 const CreateProjectSchema = z.object({
   name: z.string().min(1, "El nombre es obligatorio").max(50, "Máximo 50 caracteres"),
@@ -53,6 +54,11 @@ export async function createProjectAction(formData: FormData) {
       })
 
       return project
+    })
+
+    // Registrar actividad de crear proyecto
+    await logActivity(dbUser.id, 'project_created', newProject.id, {
+      projectName: newProject.name
     })
 
     revalidatePath('/dashboard')

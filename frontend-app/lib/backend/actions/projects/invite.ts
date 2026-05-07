@@ -1,98 +1,100 @@
-'use server'
+"use server"
 
-import { db } from '../../db'
-import { projects, collaborators, users } from '../../db/schema'
-import { eq, and } from 'drizzle-orm'
-import { createClient } from '../../supabase/server'
-import { revalidatePath } from 'next/cache'
+import { createClient } from '@/lib/backend/supabase/server'
 
-export async function inviteCollaboratorAction(projectId: string, email: string) {
-  if (!email || email.trim() === '') {
-    return { error: 'El email es requerido' }
-  }
-
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { error: 'No autorizado' }
-  }
-
-  // Get the db user
-  const [dbUser] = await db
-    .select()
-    .from(users)
-    .where(eq(users.authId, user.id))
-    .limit(1)
-
-  if (!dbUser) {
-    return { error: 'Usuario actual no encontrado en la base de datos' }
-  }
-
-  // Check if current user is owner
-  const [project] = await db
-    .select()
-    .from(projects)
-    .where(and(eq(projects.id, projectId), eq(projects.ownerId, dbUser.id)))
-    .limit(1)
-
-  if (!project) {
-    return { error: 'No tienes permisos de propietario para invitar colaboradores' }
-  }
-
-  // Buscar al invitado en la tabla profiles de supabase
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('email', email)
-    .single()
-
-  if (!profile) {
-    return { error: 'El usuario no está registrado en DBCanvas' }
-  }
-
-  if (profile.id === user.id) {
-    return { error: 'No puedes invitarte a ti mismo' }
-  }
-
-  // Find the invited user in our local users table
-  const [invitedDbUser] = await db
-    .select()
-    .from(users)
-    .where(eq(users.authId, profile.id))
-    .limit(1)
-
-  if (!invitedDbUser) {
-    return { error: 'El usuario no ha completado su perfil' }
-  }
-
-  // Check if they are already a collaborator
-  const [existingCollab] = await db
-    .select()
-    .from(collaborators)
-    .where(
-      and(
-        eq(collaborators.projectId, projectId),
-        eq(collaborators.userId, invitedDbUser.id)
-      )
-    )
-    .limit(1)
-
-  if (existingCollab) {
-    return { error: 'El usuario ya es colaborador' }
-  }
-
+export async function inviteCollaborator(
+  projectId: string,
+  email: string
+): Promise<{ success: boolean; error?: string }> {
   try {
-    await db.insert(collaborators).values({
-      projectId,
-      userId: invitedDbUser.id,
-      role: 'editor'
-    })
+    const supabase = await createClient()
 
-    revalidatePath('/dashboard')
-    return { success: true, message: 'Colaborador añadido correctamente' }
-  } catch (error) {
-    console.error('Error in inviteCollaboratorAction:', error)
-    return { error: 'Ocurrió un error al añadir el colaborador' }
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: 'No autenticado' }
+
+    const { data: project } = await supabase
+      .from('projects')
+      .select('name, owner_id')
+      .eq('id', projectId)
+      .single()
+
+    if (!project) return { 
+      success: false, error: 'Proyecto no encontrado' 
+    }
+
+    const { data: existing } = await supabase
+      .from('project_invitations')
+      .select('id')
+      .eq('project_id', projectId)
+      .eq('email', email)
+      .is('accepted_at', null)
+      .maybeSingle()
+
+    if (existing) return {
+      success: false,
+      error: 'Ya existe una invitación pendiente para este correo'
+    }
+
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle()
+
+    const { data: invitation, error: insertError } = await supabase
+      .from('project_invitations')
+      .insert({
+        project_id: projectId,
+        email: email,
+        invited_by: user.id
+      })
+      .select('token')
+      .single()
+
+    if (insertError || !invitation) return {
+      success: false, error: 'Error al crear la invitación'
+    }
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL 
+      ?? 'http://localhost:3000'
+
+    const inviteLink = existingUser
+      ? baseUrl + '/invite/' + invitation.token
+      : baseUrl + '/register?inviteToken=' + invitation.token
+
+    await sendInviteEmail(
+      email,
+      project.name,
+      inviteLink,
+      !!existingUser
+    )
+
+    return { success: true }
+
+  } catch (err) {
+    console.error('inviteCollaborator error:', err)
+    return { 
+      success: false, 
+      error: 'Error inesperado al enviar la invitación' 
+    }
+  }
+}
+
+async function sendInviteEmail(
+  to: string,
+  projectName: string,
+  inviteLink: string,
+  hasAccount: boolean
+): Promise<void> {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL 
+      ?? 'http://localhost:3000'
+    await fetch(baseUrl + '/api/send-invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to, projectName, inviteLink, hasAccount })
+    })
+  } catch (err) {
+    console.error('sendInviteEmail error:', err)
   }
 }

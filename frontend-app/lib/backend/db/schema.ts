@@ -18,6 +18,7 @@ export const projects = pgTable('projects', {
   tags: text('tags').array().default(sql`ARRAY[]::text[]`),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  deleted_at: timestamp('deleted_at', { withTimezone: true }),
 });
 
 export const collaborators = pgTable('collaborators', {

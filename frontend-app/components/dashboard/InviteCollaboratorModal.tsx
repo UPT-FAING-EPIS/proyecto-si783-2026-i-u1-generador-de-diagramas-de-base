@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { inviteCollaboratorAction } from '@/lib/backend/actions/projects/invite'
+import { inviteCollaborator } from '@/lib/backend/actions/projects/invite'
 import { UserPlus } from 'lucide-react'
 
 interface InviteCollaboratorModalProps {
@@ -35,13 +35,13 @@ export function InviteCollaboratorModal({
     if (!email.trim() || loading) return
 
     setLoading(true)
-    const result = await inviteCollaboratorAction(projectId, email)
+    const result = await inviteCollaborator(projectId, email)
     setLoading(false)
 
     if (result.error) {
       toast.error(result.error)
     } else {
-      toast.success(result.message)
+      toast.success('Invitación enviada correctamente')
       setOpen(false)
       setEmail('')
     }

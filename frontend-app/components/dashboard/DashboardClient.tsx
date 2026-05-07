@@ -2,10 +2,12 @@
 
 import { useState, useMemo } from 'react'
 import { Search, LayoutGrid, List, X, Plus } from 'lucide-react'
+import { getProjectsByUser, getDeletedProjects } from '@/lib/backend/actions/projects/list'
 import { ProjectGrid } from './ProjectGrid'
 import { ProjectListView } from './ProjectListView'
 import { CreateProjectModal } from './CreateProjectModal'
 import { HistorialSection } from './HistorialSection'
+import { Trash2 } from 'lucide-react'
 
 interface ProjectItem {
   project: {
@@ -84,16 +86,29 @@ export function DashboardClient({ projects, currentUserId, currentUser, activeSe
   return (
     <div>
       {/* Header: título + acciones */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-semibold text-[#E2E8F0]">Mis Proyectos</h2>
-        <button
-          onClick={() => setIsCreateProjectOpen(true)}
-          className="bg-[#1A6CF6] hover:bg-blue-700 text-white shadow-lg shadow-[#1A6CF6]/20 transition-all hover:-translate-y-[1px] flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
-        >
-          <Plus className="w-4 h-4" />
-          Crear Proyecto
-        </button>
-      </div>
+      {activeSection === 'papelera' ? (
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-white">
+              Papelera
+            </h1>
+            <p className="text-gray-400 text-sm mt-1">
+              {filtered.length} proyecto{filtered.length !== 1 ? 's' : ''} eliminado{filtered.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-semibold text-[#E2E8F0]">Mis Proyectos</h2>
+          <button
+            onClick={() => setIsCreateProjectOpen(true)}
+            className="bg-[#1A6CF6] hover:bg-blue-700 text-white shadow-lg shadow-[#1A6CF6]/20 transition-all hover:-translate-y-[1px] flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+          >
+            <Plus className="w-4 h-4" />
+            Crear Proyecto
+          </button>
+        </div>
+      )}
       <CreateProjectModal open={isCreateProjectOpen} onOpenChange={setIsCreateProjectOpen} />
 
       {/* Toolbar: búsqueda + toggle */}
@@ -160,6 +175,19 @@ export function DashboardClient({ projects, currentUserId, currentUser, activeSe
       {/* Contenido */}
       {activeSection === 'historial' ? (
         <HistorialSection userId={currentUserId} />
+      ) : activeSection === 'papelera' && filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center mb-4">
+            <Trash2 className="w-8 h-8 text-gray-500" />
+          </div>
+          <p className="text-gray-300 font-medium text-lg">
+            La papelera está vacía
+          </p>
+          <p className="text-gray-500 text-sm mt-2 max-w-xs">
+            Los proyectos eliminados aparecerán aquí. 
+            Puedes restaurarlos cuando quieras.
+          </p>
+        </div>
       ) : filtered.length === 0 && query ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <p className="text-white font-medium mb-1">

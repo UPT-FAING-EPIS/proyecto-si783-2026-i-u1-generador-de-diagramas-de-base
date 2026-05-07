@@ -6,6 +6,7 @@ import { eq, and } from 'drizzle-orm'
 import { createClient } from '../../supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { FlowJson } from '@/lib/flow-types'
+import { logActivity } from '../activity/logActivity'
 
 export async function saveDiagramAction({
   projectId,
@@ -38,7 +39,7 @@ export async function saveDiagramAction({
 
   // Check project access (owner or editor)
   const [access] = await db
-    .select({ id: projects.id, isPublic: diagrams.isPublic, shareAccess: diagrams.shareAccess })
+    .select({ id: projects.id, name: projects.name, isPublic: diagrams.isPublic, shareAccess: diagrams.shareAccess })
     .from(projects)
     .innerJoin(diagrams, eq(diagrams.projectId, projects.id))
     .innerJoin(
@@ -74,6 +75,11 @@ export async function saveDiagramAction({
         updatedAt: new Date() 
       })
       .where(eq(diagrams.projectId, projectId))
+
+    // Registrar actividad de guardar proyecto
+    await logActivity(dbUser.id, 'project_saved', projectId, {
+      projectName: access?.name || 'Proyecto sin nombre'
+    })
 
     revalidatePath(`/editor/${projectId}`)
     return { success: true }
