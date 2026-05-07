@@ -9,7 +9,7 @@ export default function Footer() {
         <div className="md:col-span-1">
           <Link href="/" className="flex items-center gap-2 mb-4">
             <Database className="w-6 h-6 text-[#1A6CF6]" />
-            <span className="text-xl font-bold text-white tracking-tight">DBCanvas</span>
+            <span className="text-xl font-bold text-white tracking-tight">FluxSQL</span>
           </Link>
           <p className="text-slate-400 text-sm">
             La forma más rápida de diseñar bases de datos en equipo.
@@ -42,7 +42,7 @@ export default function Footer() {
       </div>
 
       <div className="max-w-7xl mx-auto pt-8 border-t border-[#1E2A45] flex flex-col md:flex-row items-center justify-between text-sm text-slate-500">
-        <p>© 2026 DBCanvas — Universidad Privada de Tacna. Todos los derechos reservados.</p>
+        <p>© 2026 FluxSQL — Universidad Privada de Tacna. Todos los derechos reservados.</p>
         <div className="flex items-center gap-4 mt-4 md:mt-0">
           <Link href="https://github.com" className="hover:text-white transition-colors">
             <span className="sr-only">GitHub</span>

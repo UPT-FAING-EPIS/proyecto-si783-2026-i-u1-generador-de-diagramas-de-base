@@ -18,6 +18,7 @@ export const projects = pgTable('projects', {
   tags: text('tags').array().default(sql`ARRAY[]::text[]`),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
 
 export const collaborators = pgTable('collaborators', {
@@ -63,4 +64,19 @@ export const diagramVersions = pgTable('diagram_versions', {
   message: text('message').notNull(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const projectInvitations = pgTable('project_invitations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  email: text('email').notNull(),
+  role: text('role').default('editor').notNull(),
+  invitedBy: uuid('invited_by').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => {
+  return [
+    check('project_invitations_role_check', sql`${table.role} IN ('editor', 'viewer')`),
+    unique('project_invitations_project_id_email_unique').on(table.projectId, table.email)
+  ];
 });

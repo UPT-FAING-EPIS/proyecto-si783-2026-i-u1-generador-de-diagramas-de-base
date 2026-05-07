@@ -18,11 +18,13 @@ export function AuthView({ defaultTab = 'login' }: { defaultTab?: 'login' | 'reg
   const [showPassword, setShowPassword] = useState(false)
   const [isPending, setIsPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setIsPending(true)
     setError(null)
+    setSuccess(null)
 
     const formData = new FormData(e.currentTarget)
     
@@ -36,6 +38,9 @@ export function AuthView({ defaultTab = 'login' }: { defaultTab?: 'login' | 'reg
       const result = await registerAction(formData)
       if (result?.error) {
         setError(result.error)
+        setIsPending(false)
+      } else if (result?.success) {
+        setSuccess(result.message)
         setIsPending(false)
       }
     }
@@ -148,14 +153,14 @@ export function AuthView({ defaultTab = 'login' }: { defaultTab?: 'login' | 'reg
             <div className="flex items-center justify-between border-b border-[#1E2A45] mb-8 relative">
               <button
                 type="button"
-                onClick={() => { setActiveTab('login'); setError(null) }}
+                onClick={() => { setActiveTab('login'); setError(null); setSuccess(null) }}
                 className={`flex-1 pb-3 text-sm font-semibold transition-colors ${activeTab === 'login' ? 'text-white' : 'text-[#64748B] hover:text-[#94A3B8]'}`}
               >
                 Iniciar sesión
               </button>
               <button
                 type="button"
-                onClick={() => { setActiveTab('register'); setError(null) }}
+                onClick={() => { setActiveTab('register'); setError(null); setSuccess(null) }}
                 className={`flex-1 pb-3 text-sm font-semibold transition-colors ${activeTab === 'register' ? 'text-white' : 'text-[#64748B] hover:text-[#94A3B8]'}`}
               >
                 Crear cuenta
@@ -240,6 +245,12 @@ export function AuthView({ defaultTab = 'login' }: { defaultTab?: 'login' | 'reg
                     </div>
                   )}
 
+                  {success && (
+                    <div className="text-emerald-300 text-sm font-medium text-center bg-emerald-400/10 py-2 rounded-lg border border-emerald-400/20">
+                      {success}
+                    </div>
+                  )}
+
                   {activeTab === 'login' && (
                     <div className="flex items-center space-x-2 pt-1">
                       <Checkbox id="remember" className="border-[#64748B] data-[state=checked]:bg-[#1A6CF6]" />
@@ -266,7 +277,7 @@ export function AuthView({ defaultTab = 'login' }: { defaultTab?: 'login' | 'reg
                 </form>
 
                 {/* Social Login */}
-                <div className="mt-8">
+                <div className="hidden">
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center">
                       <span className="w-full border-t border-[#1E2A45]" />
@@ -313,7 +324,7 @@ export function AuthView({ defaultTab = 'login' }: { defaultTab?: 'login' | 'reg
                   </span>
                   <button 
                     type="button" 
-                    onClick={() => { setActiveTab(activeTab === 'login' ? 'register' : 'login'); setError(null) }}
+                    onClick={() => { setActiveTab(activeTab === 'login' ? 'register' : 'login'); setError(null); setSuccess(null) }}
                     className="text-[#1A6CF6] font-medium hover:text-[#00D4FF] transition-colors"
                   >
                     {activeTab === 'login' ? 'Crear cuenta' : 'Iniciar sesión'}

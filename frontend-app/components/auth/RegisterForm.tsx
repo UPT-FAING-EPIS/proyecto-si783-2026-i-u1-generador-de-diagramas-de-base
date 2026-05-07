@@ -9,18 +9,23 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 
 export function RegisterForm() {
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setIsPending(true)
     setError(null)
+    setSuccess(null)
 
     const formData = new FormData(e.currentTarget)
     const result = await registerAction(formData)
 
     if (result?.error) {
       setError(result.error)
+      setIsPending(false)
+    } else if (result?.success) {
+      setSuccess(result.message)
       setIsPending(false)
     }
   }
@@ -60,6 +65,11 @@ export function RegisterForm() {
           {error && (
             <div className="text-red-400 text-sm font-medium">
               {error}
+            </div>
+          )}
+          {success && (
+            <div className="text-emerald-300 text-sm font-medium">
+              {success}
             </div>
           )}
         </CardContent>

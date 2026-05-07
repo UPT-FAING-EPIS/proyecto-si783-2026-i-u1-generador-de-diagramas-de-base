@@ -4,9 +4,9 @@ import { z } from 'zod'
 import { createClient } from '../../supabase/server'
 import { db } from '../../db'
 import { users } from '../../db/schema'
-import { redirect } from 'next/navigation'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { acceptPendingInvitations } from '../projects/acceptPendingInvitations'
 
 const RegisterSchema = z.object({
   email: z.string().email("Correo inválido"),
@@ -38,10 +38,11 @@ export async function registerAction(formData: FormData) {
   }
 
   try {
-    await db.insert(users).values({
+    const [dbUser] = await db.insert(users).values({
       authId: data.user.id,
       email,
-    })
+    }).returning({ id: users.id })
+    await acceptPendingInvitations(dbUser.id, email)
   } catch {
     // Rollback: eliminar el usuario de auth para mantener consistencia
     // Usamos service_role_key si está disponible para tener permisos admin.
@@ -62,5 +63,8 @@ export async function registerAction(formData: FormData) {
     return { error: 'Error al crear el perfil. Intenta de nuevo.' }
   }
 
-  redirect('/dashboard')
+  return {
+    success: true,
+    message: 'Cuenta creada. Verifica tu correo para activar tu cuenta antes de iniciar sesion.',
+  }
 }

@@ -9,7 +9,7 @@ export default function Navbar() {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
           <Database className="w-6 h-6 text-[#1A6CF6]" />
-          <span className="text-xl font-bold text-white tracking-tight">DBCanvas</span>
+          <span className="text-xl font-bold text-white tracking-tight">FluxSQL</span>
         </Link>
 
         {/* Center Links (Desktop) */}

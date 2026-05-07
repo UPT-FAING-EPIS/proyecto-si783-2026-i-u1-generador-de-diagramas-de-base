@@ -10,8 +10,7 @@ const NAV_ITEMS = [
   { icon: Home, label: 'Proyectos', id: 'proyectos' },
   { icon: Clock, label: 'Recientes', id: 'recientes' },
   { icon: Users, label: 'Compartidos', id: 'compartidos' },
-  { icon: Trash2, label: 'Papelera', id: 'papelera' },
-  { icon: History, label: 'Historial', id: 'historial' }
+  { icon: Trash2, label: 'Papelera', id: 'papelera' }
 ];
 
 interface DashboardSidebarProps {
@@ -33,7 +32,7 @@ export function DashboardSidebar({ userName, userEmail, userAvatarUrl, activeSec
         <div className="w-7 h-7 bg-[#1A6CF6] rounded-lg flex items-center justify-center flex-shrink-0">
           <span className="text-white text-xs font-bold">DB</span>
         </div>
-        <span className="text-white font-semibold text-base">DBCanvas</span>
+        <span className="text-white font-semibold text-base">FluxSQL</span>
       </div>
 
       {/* Nav items */}
@@ -84,22 +83,6 @@ export function DashboardSidebar({ userName, userEmail, userAvatarUrl, activeSec
             {userEmail && <p className="text-xs truncate" style={{ color: '#6B7280' }}>{userEmail}</p>}
           </div>
         </Link>
-        <Link
-          href="/profile"
-          className="flex items-center gap-2 text-xs w-full px-3 py-2 rounded-lg transition-colors hover:text-white mb-1"
-          style={{ color: '#6B7280' }}
-        >
-          <Settings size={14} />
-          Configuración
-        </Link>
-        <form action={logoutAction}>
-          <button type="submit"
-            className="flex items-center gap-2 text-xs w-full px-3 py-2 rounded-lg transition-colors hover:text-white"
-            style={{ color: '#6B7280' }}>
-            <LogOut size={14} />
-            Salir
-          </button>
-        </form>
       </div>
     </aside>
   );

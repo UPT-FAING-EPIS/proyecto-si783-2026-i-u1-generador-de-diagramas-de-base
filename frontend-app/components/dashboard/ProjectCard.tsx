@@ -1,6 +1,6 @@
 'use client'
 
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import Link from 'next/link'
 import { InviteCollaboratorModal } from './InviteCollaboratorModal'
 import { Clock, MoreVertical, Trash2, RotateCcw, UserPlus } from 'lucide-react'
@@ -18,7 +18,7 @@ interface Project {
   updatedAt: Date
   createdAt?: Date
   ownerId: string
-  deleted_at?: string | null
+  deleted_at?: string | Date | null
 }
 
 interface ProjectCardProps {
@@ -30,14 +30,13 @@ interface ProjectCardProps {
   currentUser?: { id: string; name: string } | null
 }
 
-
-export function ProjectCard({ project, role, isOwner = false, members, tags, currentUser }: ProjectCardProps) {
+export function ProjectCard({ project, role, isOwner = false, tags }: ProjectCardProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isInviteOpen, setIsInviteOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
+  const isDeleted = Boolean(project.deleted_at)
 
-  // Cerrar menú al hacer clic fuera
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -52,50 +51,51 @@ export function ProjectCard({ project, role, isOwner = false, members, tags, cur
   }, [isMenuOpen])
 
   const handleDelete = async () => {
-    toast.info('La funcionalidad de papelera se habilitará pronto')
+    if (!window.confirm(`¿Mover "${project.name}" a la papelera?`)) return
+    const result = await deleteProjectAction(project.id)
+    if (result.error) {
+      toast.error(result.error)
+      return
+    }
+    toast.success(result.message)
+    router.refresh()
   }
 
   const handleRestore = async () => {
-    toast.info('La funcionalidad de restauración se habilitará pronto')
+    const result = await restoreProjectAction(project.id)
+    if (result.error) {
+      toast.error(result.error)
+      return
+    }
+    toast.success(result.message)
+    router.refresh()
   }
 
   return (
-    <Link href={`/editor/${project.id}`} className="block h-full">
-      <Card className="h-full flex flex-col bg-gray-900 group relative rounded-xl overflow-hidden border border-gray-800 hover:border-blue-500 hover:shadow-xl hover:shadow-blue-500/20 transition-all duration-200 cursor-pointer">
-        {/* PORTADA CON GRADIENTE Y BADGES ABSOLUTOS */}
-        <div className="relative h-28 bg-gradient-to-br from-blue-900 via-purple-900 to-gray-900 flex items-end p-3 overflow-hidden">
-          {/* Grid pattern background */}
+    <Link href={isDeleted ? '#' : `/editor/${project.id}`} onClick={(event) => { if (isDeleted) event.preventDefault() }} className="block h-full">
+      <Card className={`h-full flex flex-col bg-gray-900 group relative rounded-xl border border-gray-800 transition-all duration-200 ${isDeleted ? 'cursor-default opacity-80' : 'cursor-pointer hover:border-blue-500 hover:shadow-xl hover:shadow-blue-500/20'}`}>
+        <div className="relative h-28 bg-gradient-to-br from-blue-900 via-purple-900 to-gray-900 flex items-end p-3 rounded-t-xl">
           <div
-            className="absolute inset-0"
+            className="absolute inset-0 rounded-t-xl"
             style={{
               backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px)',
               backgroundSize: '20px 20px',
               opacity: 0.3,
             }}
           />
-          
-          {/* Badge Plan (esquina superior izquierda) */}
+
           <div className="absolute top-2 left-2 z-10">
-            <div className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-              role === 'owner' 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-gray-600 text-gray-200'
-            }`}>
+            <div className={`text-xs font-medium px-2.5 py-1 rounded-full ${role === 'owner' ? 'bg-blue-600 text-white' : 'bg-gray-600 text-gray-200'}`}>
               {role === 'owner' ? 'Pro' : 'Free'}
             </div>
           </div>
 
-          {/* MENÚ DE 3 PUNTOS (reemplaza botón Invitar) */}
           {role === 'owner' && (
-            <div 
-              className="absolute top-2 right-2 z-20"
-              ref={menuRef}
-            >
-              {/* Botón MoreVertical */}
+            <div className="absolute top-2 right-2 z-20" ref={menuRef}>
               <button
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
+                onClick={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
                   setIsMenuOpen(!isMenuOpen)
                 }}
                 className="p-1.5 rounded-full bg-black/40 hover:bg-black/60 transition-colors text-gray-300 hover:text-white"
@@ -103,67 +103,83 @@ export function ProjectCard({ project, role, isOwner = false, members, tags, cur
                 <MoreVertical size={16} />
               </button>
 
-              {/* Dropdown Menu */}
               {isMenuOpen && (
-                <div className="absolute right-0 top-8 z-50 min-w-40 rounded-lg bg-gray-900 border border-gray-700 shadow-xl py-1">
-                  <>
-                    {/* Opción: Invitar Colaborador */}
+                <div className="absolute right-0 top-8 z-50 min-w-44 rounded-lg bg-gray-900 border border-gray-700 shadow-xl py-1">
+                  {isDeleted ? (
                     <button
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
+                      onClick={(event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
                         setIsMenuOpen(false)
-                        setIsInviteOpen(true)
+                        handleRestore()
                       }}
-                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-emerald-300 hover:bg-emerald-950/40 transition-colors"
                     >
-                      <UserPlus size={16} />
-                      Invitar colaborador
+                      <RotateCcw size={16} />
+                      Restaurar
                     </button>
-
-                    {/* Opción: Eliminar Proyecto */}
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        setIsMenuOpen(false)
-                        handleDelete()
-                      }}
-                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-950/40 transition-colors"
-                    >
-                      <Trash2 size={16} />
-                      Eliminar proyecto
-                    </button>
-                  </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          setIsMenuOpen(false)
+                          setIsInviteOpen(true)
+                        }}
+                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors rounded-t-lg"
+                      >
+                        <UserPlus size={16} />
+                        Invitar
+                      </button>
+                      <button
+                        onClick={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          setIsMenuOpen(false)
+                          handleDelete()
+                        }}
+                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-950/40 transition-colors rounded-b-lg"
+                      >
+                        <Trash2 size={16} />
+                        Eliminar
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
           )}
 
-          {/* Nombre del proyecto (en la portada, parte inferior) */}
           <h3 className="text-white font-bold text-base leading-tight z-10 relative">
             {project.name}
           </h3>
+          {isDeleted && (
+            <span className="absolute bottom-3 right-3 z-10 rounded-full border border-red-500/30 bg-red-500/15 px-2 py-0.5 text-xs font-medium text-red-200">
+              Papelera
+            </span>
+          )}
         </div>
 
         <CardContent className="flex-grow pb-2 px-3 pt-3">
-          {/* Description */}
           {project.description && (
             <p className="text-sm text-gray-400 line-clamp-2 mb-2">
               {project.description}
             </p>
           )}
-          
-          {/* Tags si existen */}
+
           {tags && tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {tags.slice(0, 2).map(tag => (
-                <span key={tag} className="text-xs px-2 py-0.5 rounded-full"
+                <span
+                  key={tag}
+                  className="text-xs px-2 py-0.5 rounded-full"
                   style={{
                     backgroundColor: getTagColor(tag) + '22',
                     color: getTagColor(tag),
                     border: `1px solid ${getTagColor(tag)}33`,
-                  }}>
+                  }}
+                >
                   {tag}
                 </span>
               ))}
@@ -176,13 +192,9 @@ export function ProjectCard({ project, role, isOwner = false, members, tags, cur
           )}
         </CardContent>
 
-        <CardFooter className="p-3 bg-gray-800/50 border-t border-gray-700 mt-auto">
+        <CardFooter className="p-3 bg-gray-800/50 border-t border-gray-700 mt-auto rounded-b-xl">
           <div className="flex items-center justify-between w-full">
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
-              isOwner 
-                ? 'bg-green-900/50 text-green-300 border-green-800'
-                : 'bg-purple-900/50 text-purple-300 border-purple-800'
-            }`}>
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${isOwner ? 'bg-green-900/50 text-green-300 border-green-800' : 'bg-purple-900/50 text-purple-300 border-purple-800'}`}>
               {isOwner ? 'Propietario' : 'Colaborador'}
             </span>
 
@@ -193,10 +205,9 @@ export function ProjectCard({ project, role, isOwner = false, members, tags, cur
           </div>
         </CardFooter>
 
-        {/* InviteCollaboratorModal controlado por estado */}
         {isInviteOpen && (
-          <InviteCollaboratorModal 
-            projectId={project.id} 
+          <InviteCollaboratorModal
+            projectId={project.id}
             open={isInviteOpen}
             onOpenChange={setIsInviteOpen}
           />

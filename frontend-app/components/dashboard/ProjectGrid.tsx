@@ -10,6 +10,7 @@ interface ProjectData {
     updatedAt: Date
     ownerId: string
     tags?: string[] | null
+    deleted_at?: string | Date | null
   }
   role: string
   members?: { id: string; name: string }[]
@@ -22,7 +23,7 @@ interface ProjectGridProps {
   onCreateProject?: () => void
 }
 
-export function ProjectGrid({ projects, currentUserId, currentUser, onCreateProject }: ProjectGridProps) {
+export function ProjectGrid({ projects, currentUserId, currentUser }: ProjectGridProps) {
   if (projects.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">

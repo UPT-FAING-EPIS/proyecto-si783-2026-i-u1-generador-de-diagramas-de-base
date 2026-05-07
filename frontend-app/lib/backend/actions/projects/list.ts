@@ -1,6 +1,6 @@
 import { db } from '../../db'
 import { projects, collaborators, users } from '../../db/schema'
-import { eq, desc, isNull, and, ne } from 'drizzle-orm'
+import { eq, desc, and, ne } from 'drizzle-orm'
 import { createClient } from '../../supabase/server'
 
 import { sql } from 'drizzle-orm'
@@ -23,6 +23,7 @@ export async function getProjectsByUser() {
         tags: projects.tags,
         createdAt: projects.createdAt,
         updatedAt: projects.updatedAt,
+        deleted_at: projects.deletedAt,
       },
       role: collaborators.role,
       members: sql<{id: string, name: string}[]>`(
@@ -51,6 +52,7 @@ export async function getSharedProjects(userId: string) {
         tags: projects.tags,
         createdAt: projects.createdAt,
         updatedAt: projects.updatedAt,
+        deleted_at: projects.deletedAt,
       },
       role: collaborators.role,
       members: sql<{id: string, name: string}[]>`(

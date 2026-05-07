@@ -29,7 +29,7 @@ interface DashboardClientProps {
   onSectionChange: (section: string) => void
 }
 
-export function DashboardClient({ projects, currentUserId, currentUser, activeSection, onSectionChange }: DashboardClientProps) {
+export function DashboardClient({ projects, currentUserId, currentUser, activeSection }: DashboardClientProps) {
   const [query, setQuery] = useState('')
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {

@@ -3,6 +3,10 @@
 import { z } from 'zod'
 import { createClient } from '../../supabase/server'
 import { redirect } from 'next/navigation'
+import { db } from '../../db'
+import { users } from '../../db/schema'
+import { eq } from 'drizzle-orm'
+import { acceptPendingInvitations } from '../projects/acceptPendingInvitations'
 
 const ERROR_MAP: Record<string, string> = {
   'Invalid login credentials': 'Correo o contraseña incorrectos',
@@ -35,6 +39,12 @@ export async function loginAction(formData: FormData) {
   if (authError) {
     const friendlyError = ERROR_MAP[authError.message] ?? 'Error al iniciar sesión. Intenta de nuevo.'
     return { error: friendlyError }
+  }
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user?.email) {
+    const [dbUser] = await db.select({ id: users.id }).from(users).where(eq(users.authId, user.id)).limit(1)
+    if (dbUser) await acceptPendingInvitations(dbUser.id, user.email)
   }
 
   redirect(next?.startsWith('/') ? next : '/dashboard')

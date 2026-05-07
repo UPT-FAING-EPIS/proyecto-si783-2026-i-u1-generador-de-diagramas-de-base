@@ -62,7 +62,16 @@ export async function getActivityHistory(
       return []
     }
 
-    return (data || []).map((item: any) => ({
+    type ActivityRow = {
+      id: string
+      action: string
+      project_id?: string
+      projects?: { name?: string } | null
+      metadata?: Record<string, unknown>
+      created_at: string
+    }
+
+    return ((data || []) as ActivityRow[]).map((item) => ({
       id: item.id,
       action: item.action as ActivityAction,
       projectId: item.project_id,
