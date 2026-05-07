@@ -82,7 +82,7 @@ export default async function EditorPage({ params }: EditorPageProps) {
   const initialEdges = savedFlow.edges ?? []
 
   return (
-    <div className="h-dvh overflow-hidden bg-[#07101F]">
+    <div className="h-dvh min-h-0 overflow-hidden bg-[#07101F]">
       <EditorLayout
         projectName={access.project.name}
         projectId={projectId}

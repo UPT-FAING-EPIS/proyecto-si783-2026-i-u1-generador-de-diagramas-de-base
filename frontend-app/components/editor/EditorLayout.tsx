@@ -202,9 +202,22 @@ function EditorLayoutInner({
     }, 80)
   }
 
+  useEffect(() => {
+    // Lock global scrollbar specifically for the editor
+    const originalBodyOverflow = document.body.style.overflow
+    const originalHtmlOverflow = document.documentElement.style.overflow
+    document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = originalBodyOverflow
+      document.documentElement.style.overflow = originalHtmlOverflow
+    }
+  }, [])
+
   return (
     <div
-      className="flex h-dvh min-h-0 overflow-hidden bg-[#07101F] text-white"
+      className="flex h-full min-h-0 w-full overflow-hidden bg-[#07101F] text-white"
       onMouseMove={handleMouseMove}
     >
       <aside className="flex w-14 shrink-0 flex-col items-center overflow-hidden border-r border-[#1E2A45] bg-[#0B1322] py-4">
