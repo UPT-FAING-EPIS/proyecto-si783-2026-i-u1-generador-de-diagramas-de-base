@@ -15,6 +15,7 @@ import {
   type EditorColumn,
   type EditorDialect,
   type EditorNode,
+  type RelationshipCardinality,
 } from '@/lib/editor-schema'
 
 const SQL_PLACEHOLDER = `-- FluxSQL Editor
@@ -46,7 +47,7 @@ interface EditorStore {
   addColumn: (nodeId: string) => void
   updateColumn: (nodeId: string, columnIndex: number, column: Partial<EditorColumn>) => void
   deleteColumn: (nodeId: string, columnIndex: number) => void
-  addRelationship: (sourceId: string, sourceColumn: string, targetId: string, targetColumn: string) => void
+  addRelationship: (sourceId: string, sourceColumn: string, targetId: string, targetColumn: string, cardinality?: RelationshipCardinality) => void
   syncSqlFromCanvas: () => void
   sqlValue: string
   setSqlValue: (value: string) => void
@@ -141,7 +142,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
         : state.edges
       return { nodes, edges, sqlValue: serializeSchema(nodes, state.dialect, edges) }
     }),
-  addRelationship: (sourceId, sourceColumn, targetId, targetColumn) =>
+  addRelationship: (sourceId, sourceColumn, targetId, targetColumn, cardinality = 'many-to-one') =>
     set((state) => {
       const source = state.nodes.find((node): node is EditorNode => node.id === sourceId && node.type === 'tableNode') 
       const target = state.nodes.find((node): node is EditorNode => node.id === targetId && node.type === 'tableNode')
@@ -164,7 +165,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
           },
         }
       })
-      const edge = makeRelationshipEdge(source, { ...sourceCol, isForeignKey: true }, target, targetCol)
+      const edge = makeRelationshipEdge(source, { ...sourceCol, isForeignKey: true }, target, targetCol, cardinality)
       const edges = [...state.edges.filter((item) => item.id !== edge.id), edge]
       return { nodes, edges, sqlValue: serializeSchema(nodes, state.dialect, edges) }
     }),

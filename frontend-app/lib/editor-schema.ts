@@ -23,6 +23,7 @@ export type EditorTableData = {
 }
 
 export type EditorNode = Node<EditorTableData, 'tableNode'>
+export type RelationshipCardinality = 'many-to-one' | 'one-to-many' | 'one-to-one'
 
 export const DEFAULT_TABLE_COLOR = '#1A6CF6'
 
@@ -54,7 +55,20 @@ export function makeTableNode(index: number, name = `tabla_${index}`): EditorNod
   }
 }
 
-export function makeRelationshipEdge(source: EditorNode, sourceColumn: EditorColumn, target: EditorNode, targetColumn: EditorColumn): Edge {
+export function makeRelationshipEdge(
+  source: EditorNode,
+  sourceColumn: EditorColumn,
+  target: EditorNode,
+  targetColumn: EditorColumn,
+  cardinality: RelationshipCardinality = 'many-to-one'
+): Edge {
+  const labels: Record<RelationshipCardinality, { source: string; target: string; label: string }> = {
+    'many-to-one': { source: 'N', target: '1', label: 'N:1' },
+    'one-to-many': { source: 'N', target: '1', label: '1:N' },
+    'one-to-one': { source: '1', target: '1', label: '1:1' },
+  }
+  const relation = labels[cardinality]
+
   return {
     id: `rel-${source.id}-${sourceColumn.name}-${target.id}-${targetColumn.name}`,
     source: source.id,
@@ -70,7 +84,14 @@ export function makeRelationshipEdge(source: EditorNode, sourceColumn: EditorCol
       height: 16,
       color: '#1A6CF6',
     },
-    label: `${sourceColumn.name} -> ${targetColumn.name}`,
+    label: relation.label,
+    data: {
+      cardinality,
+      sourceCardinality: relation.source,
+      targetCardinality: relation.target,
+      sourceColumn: sourceColumn.name,
+      targetColumn: targetColumn.name,
+    },
   }
 }
 

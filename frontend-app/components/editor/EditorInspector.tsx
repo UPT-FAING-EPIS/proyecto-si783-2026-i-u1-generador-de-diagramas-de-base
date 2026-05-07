@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { Link2, Plus, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { GitBranch, Plus, Trash2 } from 'lucide-react'
 import { useEditorStore } from '@/store/useEditorStore'
-import { DEFAULT_TABLE_COLOR, isEditorNode, type EditorNode } from '@/lib/editor-schema'
+import { DEFAULT_TABLE_COLOR, isEditorNode, type EditorNode, type RelationshipCardinality } from '@/lib/editor-schema'
 
 const DATA_TYPES = ['SERIAL', 'UUID', 'INT', 'VARCHAR(100)', 'TEXT', 'DECIMAL(10,2)', 'DATE', 'TIMESTAMP', 'BOOLEAN', 'JSONB']
 
@@ -27,7 +27,7 @@ export function EditorInspector() {
     return (
       <aside className="h-full min-h-0 w-full overflow-hidden border-l border-[#1E2A45] bg-[#0D1424]/95 p-4 text-white">
         <h2 className="text-lg font-semibold">Inspector</h2>
-        <p className="mt-2 text-sm text-[#94A3B8]">Aún no hay tablas. Crea una para empezar a modelar sin escribir SQL.</p>
+        <p className="mt-2 text-sm text-[#94A3B8]">Aun no hay tablas. Crea una para empezar a modelar sin escribir SQL.</p>
         <button onClick={addTable} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#1A6CF6] px-3 py-2 text-sm font-medium text-white">
           <Plus size={14} />
           Agregar tabla
@@ -96,7 +96,7 @@ export function EditorInspector() {
                 <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] text-[#94A3B8]">
                   <FancyCheck label="Primaria" checked={Boolean(column.isPrimaryKey)} onChange={(checked) => updateColumn(selected.id, index, { isPrimaryKey: checked })} />
                   <FancyCheck label="Nulo" checked={column.nullable !== false} onChange={(checked) => updateColumn(selected.id, index, { nullable: checked })} />
-                  <FancyCheck label="Foránea" checked={Boolean(column.isForeignKey)} onChange={(checked) => updateColumn(selected.id, index, { isForeignKey: checked })} />
+                  <FancyCheck label="Foranea" checked={Boolean(column.isForeignKey)} onChange={(checked) => updateColumn(selected.id, index, { isForeignKey: checked })} />
                 </div>
                 <input value={column.defaultValue ?? ''} onChange={(event) => updateColumn(selected.id, index, { defaultValue: event.target.value })} placeholder="DEFAULT opcional" className="mt-2 w-full rounded-md border border-[#1E2A45] bg-[#0A0F1E] px-2 py-1.5 text-xs text-white outline-none focus:border-[#1A6CF6]" />
               </div>
@@ -141,43 +141,142 @@ function RelationBuilder({
 }: {
   selected: EditorNode
   tables: EditorNode[]
-  onAdd: (sourceId: string, sourceColumn: string, targetId: string, targetColumn: string) => void
+  onAdd: (sourceId: string, sourceColumn: string, targetId: string, targetColumn: string, cardinality?: RelationshipCardinality) => void
 }) {
-  const firstTarget = tables.find((item) => item.id !== selected.id) ?? tables[0]
-  const [sourceId, setSourceId] = useState(selected.id)
-  const source = tables.find((item) => item.id === sourceId) ?? selected
-  const [sourceColumn, setSourceColumn] = useState(source.data.columns[0]?.name ?? '')
-  const [targetId, setTargetId] = useState(firstTarget?.id ?? '')
-  const target = tables.find((item) => item.id === targetId)
-  const [targetColumn, setTargetColumn] = useState(target?.data.columns[0]?.name ?? '')
+  const firstChild = tables.find((item) => item.id !== selected.id) ?? tables[0]
+  const [parentId, setParentId] = useState(selected.id)
+  const parent = tables.find((item) => item.id === parentId) ?? selected
+  const [parentColumn, setParentColumn] = useState(getKeyColumn(parent))
+  const [childId, setChildId] = useState(firstChild?.id ?? '')
+  const child = tables.find((item) => item.id === childId)
+  const [childColumn, setChildColumn] = useState(child ? getForeignColumn(child, parent) : '')
+  const [cardinality, setCardinality] = useState<RelationshipCardinality>('one-to-many')
+  const touchedRef = useRef(false)
+  const relationKey = `${childId}:${childColumn}:${parentId}:${parentColumn}:${cardinality}`
+
+  const existingRelation = useMemo(() => {
+    if (!child || !parent) return null
+    return child.data.columns.find((column) =>
+      column.name === childColumn &&
+      column.references?.table === parent.data.tableName &&
+      column.references?.column === parentColumn
+    )
+  }, [child, childColumn, parent, parentColumn])
+
+  useEffect(() => {
+    if (!touchedRef.current) return
+    if (!childId || !childColumn || !parentId || !parentColumn || childId === parentId) return
+    onAdd(childId, childColumn, parentId, parentColumn, cardinality)
+  }, [relationKey, childId, childColumn, parentId, parentColumn, cardinality, onAdd])
 
   if (tables.length < 2 || tables.some((table) => table.data.columns.length === 0)) {
-    return <p className="rounded-lg border border-[#1E2A45] bg-[#111827] p-3 text-xs text-[#94A3B8]">Agrega al menos dos tablas con campos para crear relaciones manuales.</p>
+    return <p className="rounded-lg border border-[#1E2A45] bg-[#111827] p-3 text-xs text-[#94A3B8]">Agrega al menos dos tablas con campos para crear relaciones.</p>
   }
 
   return (
-    <div className="space-y-2 rounded-xl border border-[#1E2A45] bg-[#111827]/80 p-3">
-      <p className="text-[11px] text-[#94A3B8]">Elige origen y destino para crear una clave foranea directa.</p>
-      <div className="grid grid-cols-2 gap-2">
-        <LabeledSelect label="Tabla origen" value={sourceId} onChange={(value) => {
-          const nextSource = tables.find((item) => item.id === value)
-          const nextTarget = tables.find((item) => item.id !== value)
-          setSourceId(value)
-          setSourceColumn(nextSource?.data.columns[0]?.name ?? '')
-          setTargetId(nextTarget?.id ?? '')
-          setTargetColumn(nextTarget?.data.columns[0]?.name ?? '')
-        }} options={tables.map((table) => ({ value: table.id, label: table.data.tableName }))} />
-        <LabeledSelect label="Campo origen" value={sourceColumn} onChange={setSourceColumn} options={source.data.columns.map((column) => ({ value: column.name, label: column.name }))} />
+    <div className="space-y-3 rounded-xl border border-[#1E2A45] bg-[#111827]/80 p-3">
+      <div className="flex items-start gap-2">
+        <div className="mt-0.5 rounded-lg border border-[#1A6CF6]/25 bg-[#1A6CF6]/10 p-1.5 text-[#93C5FD]">
+          <GitBranch size={14} />
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-[#E2E8F0]">Relacion automatica</p>
+          <p className="mt-0.5 text-[11px] leading-4 text-[#94A3B8]">Elige tabla principal, tabla relacionada y cardinalidad. El diagrama y SQL se actualizan al cambiar.</p>
+        </div>
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <LabeledSelect label="Tabla destino" value={targetId} onChange={(value) => { const nextTarget = tables.find((item) => item.id === value); setTargetId(value); setTargetColumn(nextTarget?.data.columns[0]?.name ?? '') }} options={tables.filter((table) => table.id !== sourceId).map((table) => ({ value: table.id, label: table.data.tableName }))} />
-        <LabeledSelect label="Campo destino" value={targetColumn} onChange={setTargetColumn} options={(target?.data.columns ?? []).map((column) => ({ value: column.name, label: column.name }))} />
+
+      <SegmentedCardinality value={cardinality} onChange={(value) => {
+        touchedRef.current = true
+        setCardinality(value)
+      }} />
+
+      <div className="rounded-lg border border-[#1E2A45] bg-[#0A0F1E]/70 p-2">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#60A5FA]">Lado 1 - tabla principal</p>
+        <div className="grid grid-cols-2 gap-2">
+          <LabeledSelect label="Tabla" value={parentId} onChange={(value) => {
+            const nextParent = tables.find((item) => item.id === value)
+            const nextChild = tables.find((item) => item.id !== value) ?? child
+            touchedRef.current = true
+            setParentId(value)
+            setParentColumn(nextParent ? getKeyColumn(nextParent) : '')
+            setChildId(nextChild?.id ?? '')
+            setChildColumn(nextParent && nextChild ? getForeignColumn(nextChild, nextParent) : '')
+          }} options={tables.map((table) => ({ value: table.id, label: table.data.tableName }))} />
+          <LabeledSelect label="Clave" value={parentColumn} onChange={(value) => {
+            touchedRef.current = true
+            setParentColumn(value)
+          }} options={parent.data.columns.map((column) => ({ value: column.name, label: column.name }))} />
+        </div>
       </div>
-      <button onClick={() => onAdd(sourceId, sourceColumn, targetId, targetColumn)} disabled={!sourceId || !sourceColumn || !targetId || !targetColumn || sourceId === targetId} className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#1A6CF6]/30 bg-[#1A6CF6]/10 px-3 py-2 text-xs text-[#BFDBFE] hover:bg-[#1A6CF6]/20 disabled:opacity-50">
-        <Link2 size={13} />
-        Crear relación manual
-      </button>
+
+      <div className="rounded-lg border border-[#1E2A45] bg-[#0A0F1E]/70 p-2">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#34D399]">Lado N - tabla relacionada</p>
+        <div className="grid grid-cols-2 gap-2">
+          <LabeledSelect label="Tabla" value={childId} onChange={(value) => {
+            const nextChild = tables.find((item) => item.id === value)
+            touchedRef.current = true
+            setChildId(value)
+            setChildColumn(nextChild ? getForeignColumn(nextChild, parent) : '')
+          }} options={tables.filter((table) => table.id !== parentId).map((table) => ({ value: table.id, label: table.data.tableName }))} />
+          <LabeledSelect label="Campo FK" value={childColumn} onChange={(value) => {
+            touchedRef.current = true
+            setChildColumn(value)
+          }} options={(child?.data.columns ?? []).map((column) => ({ value: column.name, label: column.name }))} />
+        </div>
+      </div>
+
+      <div className={`rounded-lg border px-3 py-2 text-[11px] ${
+        existingRelation
+          ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-200'
+          : 'border-[#1A6CF6]/25 bg-[#1A6CF6]/10 text-[#BFDBFE]'
+      }`}>
+        {existingRelation ? 'Relacion activa y sincronizada.' : 'Lista para crear: cambia cualquier selector para aplicar la relacion.'}
+      </div>
     </div>
+  )
+}
+
+const CARDINALITIES: Array<{ value: RelationshipCardinality; label: string; hint: string }> = [
+  { value: 'one-to-many', label: '1:N', hint: 'Una principal, muchas relacionadas' },
+  { value: 'many-to-one', label: 'N:1', hint: 'Muchas relacionadas, una principal' },
+  { value: 'one-to-one', label: '1:1', hint: 'Una fila por cada fila' },
+]
+
+function SegmentedCardinality({ value, onChange }: { value: RelationshipCardinality; onChange: (value: RelationshipCardinality) => void }) {
+  return (
+    <div className="grid grid-cols-3 gap-1 rounded-lg border border-[#1E2A45] bg-[#0A0F1E] p-1">
+      {CARDINALITIES.map((item) => (
+        <button
+          key={item.value}
+          type="button"
+          onClick={() => onChange(item.value)}
+          title={item.hint}
+          className={`rounded-md px-2 py-1.5 text-xs font-semibold transition ${
+            value === item.value
+              ? 'bg-[#1A6CF6] text-white shadow shadow-[#1A6CF6]/20'
+              : 'text-[#94A3B8] hover:bg-[#111827] hover:text-white'
+          }`}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function getKeyColumn(table: EditorNode) {
+  return table.data.columns.find((column) => column.isPrimaryKey)?.name ?? table.data.columns[0]?.name ?? ''
+}
+
+function getForeignColumn(child: EditorNode, parent: EditorNode) {
+  const parentName = parent.data.tableName.toLowerCase().replace(/s$/, '')
+  return (
+    child.data.columns.find((column) => column.references?.table === parent.data.tableName)?.name ??
+    child.data.columns.find((column) => column.isForeignKey)?.name ??
+    child.data.columns.find((column) => column.name.toLowerCase().includes(parentName))?.name ??
+    child.data.columns.find((column) => !column.isPrimaryKey)?.name ??
+    child.data.columns[0]?.name ??
+    ''
   )
 }
 

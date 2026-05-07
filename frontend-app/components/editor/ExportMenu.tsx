@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useReactFlow } from "@xyflow/react"
+import { getNodesBounds, getViewportForBounds, useReactFlow } from "@xyflow/react"
 import { toPng, toSvg } from "html-to-image"
 import { toMermaid } from "@/lib/parsers"
 import { useEditorStore } from "@/store/useEditorStore"
@@ -31,7 +31,8 @@ function downloadText(content: string, fileName: string, type = 'text/plain') {
 
 export function ExportMenu({ projectName }: ExportMenuProps) {
   const [open, setOpen] = useState(false)
-  const { fitView, getNodes } = useReactFlow()
+  const [exporting, setExporting] = useState<'png' | 'svg' | null>(null)
+  const { getNodes } = useReactFlow()
   const menuRef = useRef<HTMLDivElement>(null)
   const safeName = projectName.toLowerCase().replace(/\s+/g, '-')
 
@@ -43,26 +44,55 @@ export function ExportMenu({ projectName }: ExportMenuProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const getCanvasNode = (): HTMLElement | null => {
-    return document.querySelector('.react-flow__viewport') as HTMLElement || document.querySelector('.react-flow__renderer') as HTMLElement
-  }
+  const getCanvasNode = (): HTMLElement | null => document.querySelector('.react-flow__viewport') as HTMLElement | null
 
   async function handleExportImage(kind: 'png' | 'svg') {
     setOpen(false)
+    setExporting(kind)
     const canvas = getCanvasNode()
-    if (!canvas) return
+    const nodes = getNodes()
 
-    await fitView({ duration: 200, padding: 0.2 })
-    await new Promise(r => setTimeout(r, 250))
+    if (!canvas || nodes.length === 0) {
+      setExporting(null)
+      toast.warning('No hay diagrama para exportar')
+      return
+    }
 
-    const dataUrl = kind === 'png'
-      ? await toPng(canvas, { backgroundColor: '#0A0F1E', pixelRatio: 2, filter: filterChrome })
-      : await toSvg(canvas, { backgroundColor: '#0A0F1E', filter: filterChrome })
+    try {
+      const bounds = getNodesBounds(nodes)
+      const padding = 96
+      const width = Math.max(900, Math.ceil(bounds.width + padding * 2))
+      const height = Math.max(620, Math.ceil(bounds.height + padding * 2))
+      const viewport = getViewportForBounds(bounds, width, height, 0.5, 2, padding / Math.max(width, height))
 
-    const a = document.createElement('a')
-    a.href = dataUrl
-    a.download = `${safeName}-diagrama.${kind}`
-    a.click()
+      const options = {
+        backgroundColor: '#07101F',
+        width,
+        height,
+        cacheBust: true,
+        filter: filterChrome,
+        style: {
+          width: `${width}px`,
+          height: `${height}px`,
+          transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+        },
+      }
+
+      const dataUrl = kind === 'png'
+        ? await toPng(canvas, { ...options, pixelRatio: 2 })
+        : await toSvg(canvas, options)
+
+      const a = document.createElement('a')
+      a.href = dataUrl
+      a.download = `${safeName}-diagrama.${kind}`
+      a.click()
+      toast.success(`Diagrama exportado como ${kind.toUpperCase()}`)
+    } catch (error) {
+      console.error(error)
+      toast.error(`No se pudo exportar como ${kind.toUpperCase()}`)
+    } finally {
+      setExporting(null)
+    }
   }
 
   function filterChrome(node: HTMLElement) {
@@ -75,7 +105,8 @@ export function ExportMenu({ projectName }: ExportMenuProps) {
     setOpen(false)
     const { nodes } = useEditorStore.getState()
     if (dialect === 'all') {
-      const all = serializeAllDialects(nodes)
+      const { edges } = useEditorStore.getState()
+      const all = serializeAllDialects(nodes, edges)
       downloadText(
         Object.entries(all).map(([name, content]) => `-- ${name.toUpperCase()}\n${content}`).join('\n\n'),
         `${safeName}-sql-todos-los-dialectos.sql`
@@ -84,7 +115,8 @@ export function ExportMenu({ projectName }: ExportMenuProps) {
       return
     }
     const extension = dialect === 'json' ? 'json' : 'sql'
-    downloadText(serializeSchema(nodes, dialect), `${safeName}-${dialect}.${extension}`, dialect === 'json' ? 'application/json' : 'text/sql')
+    const { edges } = useEditorStore.getState()
+    downloadText(serializeSchema(nodes, dialect, edges), `${safeName}-${dialect}.${extension}`, dialect === 'json' ? 'application/json' : 'text/sql')
     toast.success(`Exportado como ${dialect}`)
   }
 
@@ -120,8 +152,8 @@ export function ExportMenu({ projectName }: ExportMenuProps) {
 
       {open && (
         <div className="absolute right-0 top-full z-[80] mt-2 w-56 overflow-hidden rounded-xl border border-[#1E2A45] bg-[#111827] shadow-2xl shadow-black/40">
-          <MenuButton onClick={() => handleExportImage('png')}>Exportar PNG</MenuButton>
-          <MenuButton onClick={() => handleExportImage('svg')}>Exportar SVG</MenuButton>
+          <MenuButton onClick={() => handleExportImage('png')} disabled={Boolean(exporting)}>{exporting === 'png' ? 'Exportando PNG...' : 'Exportar PNG'}</MenuButton>
+          <MenuButton onClick={() => handleExportImage('svg')} disabled={Boolean(exporting)}>{exporting === 'svg' ? 'Exportando SVG...' : 'Exportar SVG'}</MenuButton>
           <MenuButton onClick={() => handleExportSql('postgresql')}>SQL PostgreSQL</MenuButton>
           <MenuButton onClick={() => handleExportSql('mysql')}>SQL MySQL</MenuButton>
           <MenuButton onClick={() => handleExportSql('sqlserver')}>SQL Server</MenuButton>
@@ -134,9 +166,9 @@ export function ExportMenu({ projectName }: ExportMenuProps) {
   )
 }
 
-function MenuButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
+function MenuButton({ children, onClick, disabled = false }: { children: React.ReactNode; onClick: () => void; disabled?: boolean }) {
   return (
-    <button onClick={onClick} className="w-full border-b border-[#1E2A45] px-3 py-2 text-left text-xs text-[#E2E8F0] transition-colors last:border-b-0 hover:bg-[#1E2A45]">
+    <button disabled={disabled} onClick={onClick} className="w-full border-b border-[#1E2A45] px-3 py-2 text-left text-xs text-[#E2E8F0] transition-colors last:border-b-0 hover:bg-[#1E2A45] disabled:cursor-wait disabled:opacity-60">
       {children}
     </button>
   )
