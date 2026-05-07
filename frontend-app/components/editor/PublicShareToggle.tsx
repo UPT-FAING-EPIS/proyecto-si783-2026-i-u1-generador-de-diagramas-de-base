@@ -41,7 +41,7 @@ export function PublicShareToggle({ diagramId, initialIsPublic, initialShareAcce
   }
 
   function handleCopy() {
-    navigator.clipboard.writeText(publicUrl).catch(() => {})
+    navigator.clipboard.writeText(publicUrl).catch(() => { })
     toast.success('Link copiado. El usuario deberá iniciar sesión para verlo.')
   }
 
@@ -53,16 +53,14 @@ export function PublicShareToggle({ diagramId, initialIsPublic, initialShareAcce
         aria-checked={isPublic}
         disabled={loading}
         onClick={() => persist(!isPublic)}
-        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1A6CF6] disabled:opacity-50 ${
-          isPublic ? 'bg-[#1A6CF6]' : 'bg-[#374151]'
-        }`}
+        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1A6CF6] disabled:opacity-50 ${isPublic ? 'bg-[#1A6CF6]' : 'bg-[#374151]'
+          }`}
         title="Activar enlace protegido"
       >
         <span className="sr-only">Habilitar enlace compartido protegido</span>
         <span
-          className={`pointer-events-none flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-lg transition-transform ${
-            isPublic ? 'translate-x-5' : 'translate-x-0.5'
-          }`}
+          className={`pointer-events-none flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-lg transition-transform ${isPublic ? 'translate-x-5' : 'translate-x-0.5'
+            }`}
         >
           {loading ? <Loader2 className="h-3 w-3 animate-spin text-gray-500" /> : isPublic ? <Link className="h-3 w-3 text-[#1A6CF6]" /> : null}
         </span>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type ElementType } from 'react'
+import { useEffect, useRef, useState, type ElementType } from 'react'
 import { ReactFlowProvider, useReactFlow, type Edge, type Node } from '@xyflow/react'
 import { ArrowLeft, Braces, CheckCircle2, Code2, Database, FileJson, GitBranch, LayoutGrid, PanelRight, Play, Plus, Save } from 'lucide-react'
 import { toast } from 'sonner'
@@ -68,6 +68,31 @@ function EditorLayoutInner({
   const [showSqlPanel, setShowSqlPanel] = useState(true)
   const [showInspector, setShowInspector] = useState(true)
   const [diffModal, setDiffModal] = useState<{ open: boolean; originalCode: string; modifiedCode: string; versionLabel: string } | null>(null)
+
+  const [sqlWidth, setSqlWidth] = useState(450)
+  const isResizing = useRef(false)
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing.current) return
+      const newWidth = e.clientX - 56
+      if (newWidth > 200 && newWidth < window.innerWidth - 300) {
+        setSqlWidth(newWidth)
+      }
+    }
+    const handleMouseUp = () => {
+      if (isResizing.current) {
+        isResizing.current = false
+        document.body.style.cursor = 'default'
+      }
+    }
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [])
 
   const { cursors, handleMouseMove } = useCollaboratorCursors(projectId, currentUser.id, currentUser.name)
   const { emitNodeMove, emitSqlChange, consumeRemoteSchemaUpdate } = useRealtimeSync(projectId, currentUser.id)
@@ -160,22 +185,13 @@ function EditorLayoutInner({
     toast.info('Mostrando todas las relaciones del diagrama.')
   }
 
-  const editorGridClass = showSqlPanel && showInspector
-    ? 'grid-cols-[34%_1fr_320px]'
-    : showSqlPanel
-      ? 'grid-cols-[34%_1fr]'
-      : showInspector
-        ? 'grid-cols-[1fr_320px]'
-        : 'grid-cols-[1fr]'
+  // Removido editorGridClass para usar layout de flex ajustables.
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#07101F] text-white" onMouseMove={handleMouseMove}>
       <aside className="flex w-14 shrink-0 flex-col items-center border-r border-[#1E2A45] bg-[#0B1322] py-4">
         <Database className="mb-7 h-5 w-5 text-[#B6C7E3]" />
         <NavButton icon={Code2} active={showSqlPanel} label="Mostrar u ocultar SQL" onClick={() => setShowSqlPanel((value) => !value)} />
-        <NavButton icon={GitBranch} label="Enfocar relaciones" onClick={focusRelations} />
-        <NavButton icon={LayoutGrid} label="Ajustar diagrama" onClick={() => fitView({ duration: 350, padding: 0.22 })} />
-        <NavButton icon={Braces} label="Sincronizar SQL desde diagrama" onClick={() => { syncSqlFromCanvas(); toast.success('SQL actualizado desde el diagrama.') }} />
         <NavButton icon={PanelRight} active={showInspector} label="Mostrar u ocultar inspector" onClick={() => setShowInspector((value) => !value)} />
       </aside>
 
@@ -212,47 +228,58 @@ function EditorLayoutInner({
           <ExportMenu projectName={projectName} />
         </header>
 
-        <section className={`grid min-h-0 flex-1 ${editorGridClass}`}>
-          {showSqlPanel && <div className="flex min-w-0 flex-col border-r border-[#1E2A45] bg-[#0B1322]">
-            <div className="flex h-11 items-center gap-2 border-b border-[#1E2A45] px-3">
-              <button onClick={syncSqlFromCanvas} className="rounded-lg border border-[#1E2A45] bg-[#111827] px-3 py-1.5 text-xs text-[#94A3B8] hover:text-white">
-                Formatear
-              </button>
-              <button onClick={handleValidate} className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300">
-                Validar
-              </button>
-              <button onClick={() => toast.info('El editor ya sincroniza el esquema en vivo.')} className="rounded-lg bg-[#123A79] px-3 py-1.5 text-xs text-[#BFDBFE]">
-                <Play className="mr-1 inline h-3 w-3" />
-                Ejecutar
-              </button>
-              <button onClick={addTable} className="ml-auto rounded-lg border border-[#1E2A45] p-1.5 text-[#94A3B8] hover:text-white" title="Agregar tabla visual">
-                <Plus size={15} />
-              </button>
-            </div>
-            <EditorPanel mode={mode} emitSqlChange={emitSqlChange} />
-            <div className="border-t border-[#1E2A45] bg-[#0D1424] p-3">
-              <div className={`rounded-xl border p-3 text-sm ${stats.warnings ? 'border-amber-500/30 bg-amber-500/10 text-amber-200' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'}`}>
-                <CheckCircle2 className="mr-2 inline h-4 w-4" />
-                {stats.warnings ? `${stats.warnings} advertencia(s) por revisar.` : 'Todo listo. No se encontraron errores.'}
-                <span className="ml-2 text-xs text-[#94A3B8]">{stats.tables} tablas · {stats.relations} relaciones</span>
+        <section className="flex min-h-0 flex-1">
+          {showSqlPanel && (
+            <>
+              <div style={{ width: sqlWidth }} className="flex min-w-0 shrink-0 flex-col border-r border-[#1E2A45] bg-[#0B1322]">
+                <div className="flex h-11 items-center gap-2 border-b border-[#1E2A45] px-3">
+                  <button onClick={syncSqlFromCanvas} className="rounded-lg border border-[#1E2A45] bg-[#111827] px-3 py-1.5 text-xs text-[#94A3B8] hover:text-white">
+                    Formatear
+                  </button>
+                  <button onClick={handleValidate} className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300">
+                    Validar
+                  </button>
+                  <button onClick={() => toast.info('El editor ya sincroniza el esquema en vivo.')} className="rounded-lg bg-[#123A79] px-3 py-1.5 text-xs text-[#BFDBFE]">
+                    <Play className="mr-1 inline h-3 w-3" />
+                    Ejecutar
+                  </button>
+                  <button onClick={addTable} className="ml-auto rounded-lg border border-[#1E2A45] p-1.5 text-[#94A3B8] hover:text-white" title="Agregar tabla visual">
+                    <Plus size={15} />
+                  </button>
+                </div>
+                <EditorPanel mode={mode} emitSqlChange={emitSqlChange} />
+                <div className="border-t border-[#1E2A45] bg-[#0D1424] p-3">
+                  <div className={`rounded-xl border p-3 text-sm ${stats.warnings ? 'border-amber-500/30 bg-amber-500/10 text-amber-200' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'}`}>
+                    <CheckCircle2 className="mr-2 inline h-4 w-4" />
+                    {stats.warnings ? `${stats.warnings} advertencia(s) por revisar.` : 'Todo listo. No se encontraron errores.'}
+                    <span className="ml-2 text-xs text-[#94A3B8]">{stats.tables} tablas · {stats.relations} relaciones</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>}
+              <div
+                className="w-1.5 cursor-col-resize hover:bg-[#1A6CF6] active:bg-[#1A6CF6] z-50 transition-colors -ml-1.5"
+                onMouseDown={() => {
+                  isResizing.current = true
+                  document.body.style.cursor = 'col-resize'
+                }}
+              />
+            </>
+          )}
 
-          <div className="relative min-w-0">
+          <div className="relative flex-1 flex flex-col min-w-0">
             <div className="absolute left-5 top-5 z-10 grid grid-cols-3 gap-2">
               <Metric label="Tablas" value={stats.tables} />
               <Metric label="Relaciones" value={stats.relations} />
               <Metric label="Advertencias" value={stats.warnings} />
             </div>
-            <Canvas emitNodeMove={emitNodeMove} />
-            <button onClick={handleSave} className="absolute bottom-5 left-5 z-10 rounded-xl bg-[#1A6CF6] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[#1A6CF6]/30">
-              <Save className="mr-2 inline h-4 w-4" />
-              Guardar
-            </button>
+            <Canvas emitNodeMove={emitNodeMove} onSave={handleSave} />
           </div>
 
-          {showInspector && <EditorInspector />}
+          {showInspector && (
+            <div className="w-[320px] shrink-0 border-l border-[#1E2A45] flex flex-col min-h-0 bg-[#0B1322]">
+              <EditorInspector />
+            </div>
+          )}
         </section>
       </main>
 

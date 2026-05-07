@@ -6,7 +6,7 @@ import '@xyflow/react/dist/style.css'
 import { useEditorStore } from '@/store/useEditorStore'
 import { TableNode } from './nodes/TableNode'
 import { RelationshipEdge } from './edges/RelationshipEdge'
-import { Eye, GitBranch, Grid3X3, Maximize2, MoreHorizontal, Rows3 } from 'lucide-react'
+import { Eye, GitBranch, Grid3X3, Maximize2, MoreHorizontal, Rows3, Save } from 'lucide-react'
 
 // CRITICAL: nodeTypes and edgeTypes MUST be defined outside the component
 const nodeTypes = {
@@ -69,9 +69,10 @@ const DEMO_EDGES: Edge[] = [
 
 interface CanvasProps {
   emitNodeMove?: (nodeId: string, position: { x: number, y: number }) => void
+  onSave?: () => void
 }
 
-export function Canvas({ emitNodeMove }: CanvasProps = {}) {
+export function Canvas({ emitNodeMove, onSave }: CanvasProps = {}) {
   const { fitView, setCenter } = useReactFlow()
   const [showGrid, setShowGrid] = useState(true)
   const { nodes, edges, hoveredNodeId, onNodesChange, onEdgesChange, setNodesAndEdges, setSelectedNodeId, setHoveredNodeId } = useEditorStore()
@@ -101,7 +102,7 @@ export function Canvas({ emitNodeMove }: CanvasProps = {}) {
   }, [])
 
   return (
-    <div className="relative isolate h-full min-h-0 w-full overflow-hidden bg-[#07101F] [background-image:radial-gradient(#1E3A5F_1px,transparent_1px)] [background-size:24px_24px]">
+    <div className={`relative isolate h-full min-h-0 w-full overflow-hidden bg-[#07101F] ${showGrid ? '[background-image:radial-gradient(#1E3A5F_1px,transparent_1px)] [background-size:24px_24px]' : ''}`}>
       <ReactFlow
         nodes={nodes}
         edges={visibleEdges}
@@ -131,9 +132,8 @@ export function Canvas({ emitNodeMove }: CanvasProps = {}) {
         <ToolButton icon={Maximize2} label="Ajustar" onClick={() => fitView({ duration: 350, padding: 0.22 })} />
         <ToolButton icon={GitBranch} label="Auto-layout" onClick={() => autoLayout(nodes, setNodesAndEdges, fitView)} active />
         <ToolButton icon={Rows3} label="Alinear" onClick={() => alignRows(nodes, setNodesAndEdges)} />
-        <ToolButton icon={Eye} label="Relaciones" onClick={() => setHoveredNodeId(null)} />
         <ToolButton icon={Grid3X3} label="Cuadrícula" onClick={() => setShowGrid((value) => !value)} active={showGrid} />
-        <ToolButton icon={MoreHorizontal} label="Más" onClick={() => setCenter(0, 0, { zoom: 1, duration: 300 })} />
+        <ToolButton icon={Save} label="Guardar" onClick={() => onSave?.()} />
       </div>
     </div>
   )
