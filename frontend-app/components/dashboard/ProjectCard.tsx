@@ -8,8 +8,9 @@ import { getRelativeDate } from '@/lib/relativeDate'
 import { getTagColor } from '@/components/ui/TagInput'
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { deleteProjectAction, restoreProjectAction } from '@/lib/backend/actions/projects/delete'
+import { deleteProjectAction, restoreProjectAction, permanentlyDeleteProjectAction, leaveProjectAction } from '@/lib/backend/actions/projects/delete'
 import { toast } from 'sonner'
+import { LogOut } from 'lucide-react'
 
 interface Project {
   id: string
@@ -58,7 +59,7 @@ export function ProjectCard({ project, role, isOwner = false, tags }: ProjectCar
       return
     }
     toast.success(result.message)
-    router.refresh()
+    window.location.reload()
   }
 
   const handleRestore = async () => {
@@ -68,7 +69,29 @@ export function ProjectCard({ project, role, isOwner = false, tags }: ProjectCar
       return
     }
     toast.success(result.message)
-    router.refresh()
+    window.location.reload()
+  }
+
+  const handlePermanentDelete = async () => {
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar definitivamente "${project.name}"? Esta acción no se puede deshacer.`)) return
+    const result = await permanentlyDeleteProjectAction(project.id)
+    if (result.error) {
+      toast.error(result.error)
+      return
+    }
+    toast.success(result.message)
+    window.location.reload()
+  }
+
+  const handleLeave = async () => {
+    if (!window.confirm(`¿Estás seguro de que deseas salir del proyecto "${project.name}"?`)) return
+    const result = await leaveProjectAction(project.id)
+    if (result.error) {
+      toast.error(result.error)
+      return
+    }
+    toast.success(result.message)
+    window.location.reload()
   }
 
   return (
@@ -90,34 +113,48 @@ export function ProjectCard({ project, role, isOwner = false, tags }: ProjectCar
             </div>
           </div>
 
-          {role === 'owner' && (
-            <div className="absolute top-2 right-2 z-20" ref={menuRef}>
-              <button
-                onClick={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  setIsMenuOpen(!isMenuOpen)
-                }}
-                className="p-1.5 rounded-full bg-black/40 hover:bg-black/60 transition-colors text-gray-300 hover:text-white"
-              >
-                <MoreVertical size={16} />
-              </button>
+          <div className="absolute top-2 right-2 z-20" ref={menuRef}>
+            <button
+              onClick={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                setIsMenuOpen(!isMenuOpen)
+              }}
+              className="p-1.5 rounded-full bg-black/40 hover:bg-black/60 transition-colors text-gray-300 hover:text-white"
+            >
+              <MoreVertical size={16} />
+            </button>
 
-              {isMenuOpen && (
-                <div className="absolute right-0 top-8 z-50 min-w-44 rounded-lg bg-gray-900 border border-gray-700 shadow-xl py-1">
-                  {isDeleted ? (
-                    <button
-                      onClick={(event) => {
-                        event.preventDefault()
-                        event.stopPropagation()
-                        setIsMenuOpen(false)
-                        handleRestore()
-                      }}
-                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-emerald-300 hover:bg-emerald-950/40 transition-colors"
-                    >
-                      <RotateCcw size={16} />
-                      Restaurar
-                    </button>
+            {isMenuOpen && (
+              <div className="absolute right-0 top-8 z-50 min-w-44 rounded-lg bg-gray-900 border border-gray-700 shadow-xl py-1">
+                {role === 'owner' ? (
+                  isDeleted ? (
+                    <>
+                      <button
+                        onClick={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          setIsMenuOpen(false)
+                          handleRestore()
+                        }}
+                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-emerald-300 hover:bg-emerald-950/40 transition-colors rounded-t-lg"
+                      >
+                        <RotateCcw size={16} />
+                        Restaurar
+                      </button>
+                      <button
+                        onClick={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          setIsMenuOpen(false)
+                          handlePermanentDelete()
+                        }}
+                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-950/40 transition-colors rounded-b-lg border-t border-gray-800"
+                      >
+                        <Trash2 size={16} />
+                        Eliminar definitivamente
+                      </button>
+                    </>
                   ) : (
                     <>
                       <button
@@ -145,11 +182,24 @@ export function ProjectCard({ project, role, isOwner = false, tags }: ProjectCar
                         Eliminar
                       </button>
                     </>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+                  )
+                ) : (
+                  <button
+                    onClick={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      setIsMenuOpen(false)
+                      handleLeave()
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-orange-400 hover:bg-orange-950/40 transition-colors rounded-lg"
+                  >
+                    <LogOut size={16} />
+                    Salir del proyecto
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
 
           <h3 className="text-white font-bold text-base leading-tight z-10 relative">
             {project.name}

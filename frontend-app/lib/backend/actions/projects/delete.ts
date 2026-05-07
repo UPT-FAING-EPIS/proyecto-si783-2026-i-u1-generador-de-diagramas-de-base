@@ -1,7 +1,7 @@
 'use server'
 
 import { db } from '../../db'
-import { projects, users } from '../../db/schema'
+import { projects, users, collaborators } from '../../db/schema'
 import { and, eq } from 'drizzle-orm'
 import { createClient } from '../../supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -62,5 +62,61 @@ export async function restoreProjectAction(projectId: string) {
   } catch (error) {
     console.error('Restore project error:', error)
     return { error: 'Error al restaurar el proyecto' }
+  }
+}
+
+export async function permanentlyDeleteProjectAction(projectId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'No autorizado' }
+  }
+
+  try {
+    const [dbUser] = await db.select().from(users).where(eq(users.authId, user.id)).limit(1)
+    if (!dbUser) return { error: 'Usuario no encontrado' }
+
+    const [project] = await db
+      .delete(projects)
+      .where(and(eq(projects.id, projectId), eq(projects.ownerId, dbUser.id)))
+      .returning({ id: projects.id, name: projects.name })
+
+    if (!project) return { error: 'No tienes permisos para eliminar este proyecto definitivamente' }
+
+    await logActivity(user.id, 'project_permanently_deleted', project.id, { projectName: project.name })
+    revalidatePath('/dashboard')
+    return { success: true, message: 'Proyecto eliminado definitivamente' }
+  } catch (error) {
+    console.error('Permanent delete project error:', error)
+    return { error: 'Error al eliminar el proyecto definitivamente' }
+  }
+}
+
+export async function leaveProjectAction(projectId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'No autorizado' }
+  }
+
+  try {
+    const [dbUser] = await db.select().from(users).where(eq(users.authId, user.id)).limit(1)
+    if (!dbUser) return { error: 'Usuario no encontrado' }
+
+    const [deleted] = await db
+      .delete(collaborators)
+      .where(and(eq(collaborators.projectId, projectId), eq(collaborators.userId, dbUser.id)))
+      .returning({ id: collaborators.id })
+
+    if (!deleted) return { error: 'No se pudo salir del proyecto' }
+
+    await logActivity(user.id, 'project_left', projectId, {})
+    revalidatePath('/dashboard')
+    return { success: true, message: 'Has salido del proyecto' }
+  } catch (error) {
+    console.error('Leave project error:', error)
+    return { error: 'Error al salir del proyecto' }
   }
 }

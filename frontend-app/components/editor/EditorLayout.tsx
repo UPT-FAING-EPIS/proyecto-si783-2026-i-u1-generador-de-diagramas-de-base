@@ -28,7 +28,7 @@ interface EditorLayoutProps {
   initialNodes?: Node[]
   initialEdges?: Edge[]
   dialect?: string
-  currentUser: { id: string, name: string }
+  currentUser: { id: string; name: string }
   initialIsPublic?: boolean
   initialShareAccess?: 'view' | 'edit'
 }
@@ -49,7 +49,7 @@ function EditorLayoutInner({
   dialect = 'postgresql',
   currentUser,
   initialIsPublic = false,
-  initialShareAccess = 'view'
+  initialShareAccess = 'view',
 }: EditorLayoutProps) {
   const { toObject, fitView } = useReactFlow()
   const nodes = useEditorStore((state) => state.nodes)
@@ -59,6 +59,7 @@ function EditorLayoutInner({
   const setDialect = useEditorStore((state) => state.setDialect)
   const setSqlValue = useEditorStore((state) => state.setSqlValue)
   const setNodesAndEdges = useEditorStore((state) => state.setNodesAndEdges)
+
   const [saving, setSaving] = useState(false)
   const [savedLabel, setSavedLabel] = useState('Listo para editar')
   const [showSqlPanel, setShowSqlPanel] = useState(true)
@@ -72,34 +73,49 @@ function EditorLayoutInner({
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!resizeTarget.current) return
+
       if (resizeTarget.current === 'sql') {
         const newWidth = e.clientX - 56
+
         if (newWidth > 220 && newWidth < window.innerWidth - 560) {
           setSqlWidth(newWidth)
         }
       } else {
         const newWidth = window.innerWidth - e.clientX
+
         if (newWidth > 280 && newWidth < window.innerWidth - 620) {
           setInspectorWidth(newWidth)
         }
       }
     }
+
     const handleMouseUp = () => {
       if (resizeTarget.current) {
         resizeTarget.current = null
         document.body.style.cursor = 'default'
       }
     }
+
     document.addEventListener('mousemove', handleMouseMove)
     document.addEventListener('mouseup', handleMouseUp)
+
     return () => {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }
   }, [])
 
-  const { cursors, handleMouseMove } = useCollaboratorCursors(projectId, currentUser.id, currentUser.name)
-  const { emitNodeMove, emitSqlChange, consumeRemoteSchemaUpdate } = useRealtimeSync(projectId, currentUser.id)
+  const { cursors, handleMouseMove } = useCollaboratorCursors(
+    projectId,
+    currentUser.id,
+    currentUser.name
+  )
+
+  const { emitNodeMove, emitSqlChange, consumeRemoteSchemaUpdate } = useRealtimeSync(
+    projectId,
+    currentUser.id
+  )
+
   const stats = getSchemaStats(nodes, edges)
 
   useEffect(() => {
@@ -122,8 +138,10 @@ function EditorLayoutInner({
 
   async function handleSave() {
     setSaving(true)
+
     try {
       const flowObject = toObject()
+
       const result = await saveDiagramAction({
         projectId,
         sqlContent: sqlValue,
@@ -136,7 +154,13 @@ function EditorLayoutInner({
         return
       }
 
-      setSavedLabel(`Guardado ${new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`)
+      setSavedLabel(
+        `Guardado ${new Date().toLocaleTimeString('es-PE', {
+          hour: '2-digit',
+          minute: '2-digit',
+        })}`
+      )
+
       toast.success('Diagrama guardado correctamente')
     } catch {
       toast.error('No se pudo guardar el diagrama')
@@ -146,18 +170,23 @@ function EditorLayoutInner({
   }
 
   async function handleRestore(versionId: string) {
-    if (!window.confirm('Se perderán los cambios no guardados. ¿Restaurar esta versión?')) return
+    if (!window.confirm('Se perderán los cambios no guardados. ¿Restaurar esta versión?')) {
+      return
+    }
 
     const result = await restoreVersionAction(versionId, projectId)
+
     if (result.error) {
       toast.error(result.error)
       return
     }
 
     const flow = toFlowJson(result.flowJson)
+
     setSqlValue(result.sqlContent ?? '')
     setDialect((result.dialect as EditorDialect) || 'postgresql')
     setNodesAndEdges(flow.nodes ?? [], flow.edges ?? [])
+
     toast.success(`Versión v${result.versionNumber} restaurada`)
   }
 
@@ -167,29 +196,48 @@ function EditorLayoutInner({
 
   function handleDialectChange(value: EditorDialect) {
     setDialect(value)
+
     window.setTimeout(() => {
       fitView({ duration: 350, padding: 0.24 })
     }, 80)
   }
 
-  // Removido editorGridClass para usar layout de flex ajustables.
-
   return (
-    <div className="flex h-screen overflow-hidden bg-[#07101F] text-white" onMouseMove={handleMouseMove}>
-      <aside className="flex w-14 shrink-0 flex-col items-center border-r border-[#1E2A45] bg-[#0B1322] py-4">
-        <Database className="mb-7 h-5 w-5 text-[#B6C7E3]" />
-        <NavButton icon={Code2} active={showSqlPanel} label="Mostrar u ocultar SQL" onClick={() => setShowSqlPanel((value) => !value)} />
-        <NavButton icon={PanelRight} active={showInspector} label="Mostrar u ocultar inspector" onClick={() => setShowInspector((value) => !value)} />
+    <div
+      className="flex h-dvh min-h-0 overflow-hidden bg-[#07101F] text-white"
+      onMouseMove={handleMouseMove}
+    >
+      <aside className="flex w-14 shrink-0 flex-col items-center overflow-hidden border-r border-[#1E2A45] bg-[#0B1322] py-4">
+        <Database className="mb-7 h-5 w-5 shrink-0 text-[#B6C7E3]" />
+
+        <NavButton
+          icon={Code2}
+          active={showSqlPanel}
+          label="Mostrar u ocultar SQL"
+          onClick={() => setShowSqlPanel((value) => !value)}
+        />
+
+        <NavButton
+          icon={PanelRight}
+          active={showInspector}
+          label="Mostrar u ocultar inspector"
+          onClick={() => setShowInspector((value) => !value)}
+        />
+
         <VersionHistorySheet projectId={projectId} onRestore={handleRestore} onCompare={handleCompare}>
           <NavButton icon={History} label="Historial" />
         </VersionHistorySheet>
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-[#1E2A45] bg-[#0B1322]/95 px-4 backdrop-blur">
-          <a href="/dashboard" className="rounded-lg p-2 text-[#94A3B8] hover:bg-[#111827] hover:text-white">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="flex h-14 shrink-0 items-center gap-3 overflow-hidden border-b border-[#1E2A45] bg-[#0B1322]/95 px-4 backdrop-blur">
+          <a
+            href="/dashboard"
+            className="rounded-lg p-2 text-[#94A3B8] hover:bg-[#111827] hover:text-white"
+          >
             <ArrowLeft size={17} />
           </a>
+
           <span className="text-sm text-[#94A3B8]">Proyectos</span>
           <span className="text-[#334155]">/</span>
           <h1 className="max-w-52 truncate text-sm font-semibold">{projectName}</h1>
@@ -199,7 +247,10 @@ function EditorLayoutInner({
               <button
                 key={value}
                 onClick={() => handleDialectChange(value)}
-                className={`flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs transition ${mode === value ? 'bg-[#123A79] text-[#BFDBFE]' : 'text-[#64748B] hover:text-white'}`}
+                className={`flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs transition ${mode === value
+                    ? 'bg-[#123A79] text-[#BFDBFE]'
+                    : 'text-[#64748B] hover:text-white'
+                  }`}
               >
                 <Icon size={13} />
                 {label}
@@ -211,26 +262,49 @@ function EditorLayoutInner({
             <CheckCircle2 size={15} className="text-emerald-400" />
             {saving ? 'Guardando...' : savedLabel}
           </div>
+
           <PresenceToolbar projectId={projectId} currentUser={currentUser} />
-          <PublicShareToggle diagramId={projectId} initialIsPublic={initialIsPublic} initialShareAccess={initialShareAccess} />
+
+          <PublicShareToggle
+            diagramId={projectId}
+            initialIsPublic={initialIsPublic}
+            initialShareAccess={initialShareAccess}
+          />
+
           <ExportMenu projectName={projectName} />
         </header>
 
-        <section className="flex min-h-0 flex-1">
+        <section className="flex min-h-0 flex-1 overflow-hidden">
           {showSqlPanel && (
             <>
-              <div style={{ width: sqlWidth }} className="flex min-w-0 shrink-0 flex-col border-r border-[#1E2A45] bg-[#0B1322]">
-                <EditorPanel mode={mode} emitSqlChange={emitSqlChange} />
-                <div className="border-t border-[#1E2A45] bg-[#0D1424] p-3">
-                  <div className={`rounded-xl border p-3 text-sm ${stats.warnings ? 'border-amber-500/30 bg-amber-500/10 text-amber-200' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'}`}>
+              <div
+                style={{ width: sqlWidth }}
+                className="flex min-h-0 min-w-0 shrink-0 flex-col overflow-hidden border-r border-[#1E2A45] bg-[#0B1322]"
+              >
+                <div className="min-h-0 flex-1 overflow-hidden">
+                  <EditorPanel mode={mode} emitSqlChange={emitSqlChange} />
+                </div>
+
+                <div className="shrink-0 border-t border-[#1E2A45] bg-[#0D1424] p-3">
+                  <div
+                    className={`rounded-xl border p-3 text-sm ${stats.warnings
+                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                        : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+                      }`}
+                  >
                     <CheckCircle2 className="mr-2 inline h-4 w-4" />
-                    {stats.warnings ? `${stats.warnings} advertencia(s) por revisar.` : 'Todo listo. No se encontraron errores.'}
-                    <span className="ml-2 text-xs text-[#94A3B8]">{stats.tables} tablas · {stats.relations} relaciones</span>
+                    {stats.warnings
+                      ? `${stats.warnings} advertencia(s) por revisar.`
+                      : 'Todo listo. No se encontraron errores.'}
+                    <span className="ml-2 text-xs text-[#94A3B8]">
+                      {stats.tables} tablas · {stats.relations} relaciones
+                    </span>
                   </div>
                 </div>
               </div>
+
               <div
-                className="w-1.5 cursor-col-resize hover:bg-[#1A6CF6] active:bg-[#1A6CF6] z-50 transition-colors -ml-1.5"
+                className="z-50 -ml-1.5 w-1.5 shrink-0 cursor-col-resize transition-colors hover:bg-[#1A6CF6] active:bg-[#1A6CF6]"
                 onMouseDown={() => {
                   resizeTarget.current = 'sql'
                   document.body.style.cursor = 'col-resize'
@@ -239,26 +313,35 @@ function EditorLayoutInner({
             </>
           )}
 
-          <div className="relative flex-1 flex flex-col min-w-0">
+          <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             <div className="absolute left-5 top-5 z-10 grid grid-cols-3 gap-2">
               <Metric label="Tablas" value={stats.tables} />
               <Metric label="Relaciones" value={stats.relations} />
               <Metric label="Advertencias" value={stats.warnings} />
             </div>
-            <Canvas projectId={projectId} emitNodeMove={emitNodeMove} onSave={handleSave} />
+
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <Canvas projectId={projectId} emitNodeMove={emitNodeMove} onSave={handleSave} />
+            </div>
           </div>
 
           {showInspector && (
             <>
               <div
-                className="z-50 -mr-1.5 w-1.5 cursor-col-resize transition-colors hover:bg-[#1A6CF6] active:bg-[#1A6CF6]"
+                className="z-50 -mr-1.5 w-1.5 shrink-0 cursor-col-resize transition-colors hover:bg-[#1A6CF6] active:bg-[#1A6CF6]"
                 onMouseDown={() => {
                   resizeTarget.current = 'inspector'
                   document.body.style.cursor = 'col-resize'
                 }}
               />
-              <div style={{ width: inspectorWidth }} className="flex min-h-0 shrink-0 flex-col border-l border-[#1E2A45] bg-[#0B1322]">
-                <EditorInspector />
+
+              <div
+                style={{ width: inspectorWidth }}
+                className="flex min-h-0 shrink-0 flex-col overflow-hidden border-l border-[#1E2A45] bg-[#0B1322]"
+              >
+                <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+                  <EditorInspector />
+                </div>
               </div>
             </>
           )}
@@ -266,6 +349,7 @@ function EditorLayoutInner({
       </main>
 
       <CollaboratorCursors cursors={cursors} />
+
       <DiffViewerModal
         open={diffModal?.open ?? false}
         onClose={() => setDiffModal(null)}
@@ -285,12 +369,15 @@ function Metric({ label, value }: { label: string; value: number }) {
   )
 }
 
-export const NavButton = forwardRef<HTMLButtonElement, {
-  icon: ElementType
-  label: string
-  active?: boolean
-  onClick?: () => void
-}>(({ icon: Icon, label, active = false, onClick, ...props }, ref) => {
+export const NavButton = forwardRef<
+  HTMLButtonElement,
+  {
+    icon: ElementType
+    label: string
+    active?: boolean
+    onClick?: () => void
+  }
+>(({ icon: Icon, label, active = false, onClick, ...props }, ref) => {
   return (
     <button
       ref={ref}
@@ -298,13 +385,17 @@ export const NavButton = forwardRef<HTMLButtonElement, {
       onClick={onClick}
       title={label}
       aria-label={label}
-      className={`mb-2 rounded-xl p-3 transition ${active ? 'bg-[#1A6CF6] text-white shadow-lg shadow-[#1A6CF6]/30' : 'text-[#64748B] hover:bg-[#111827] hover:text-white'}`}
+      className={`mb-2 rounded-xl p-3 transition ${active
+          ? 'bg-[#1A6CF6] text-white shadow-lg shadow-[#1A6CF6]/30'
+          : 'text-[#64748B] hover:bg-[#111827] hover:text-white'
+        }`}
       {...props}
     >
       <Icon size={18} />
     </button>
   )
 })
+
 NavButton.displayName = 'NavButton'
 
 export function EditorLayout(props: EditorLayoutProps) {
