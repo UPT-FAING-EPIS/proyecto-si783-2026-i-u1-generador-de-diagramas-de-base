@@ -25,7 +25,7 @@ export function EditorInspector() {
 
   if (!selected) {
     return (
-      <aside className="h-full min-h-0 w-full overflow-hidden border-l border-[#1E2A45] bg-[#0D1424]/95 p-4 text-white">
+      <aside className="h-full min-h-0 w-full overflow-y-auto border-l border-[#1E2A45] bg-[#0D1424]/95 p-4 text-white">
         <h2 className="text-lg font-semibold">Inspector</h2>
         <p className="mt-2 text-sm text-[#94A3B8]">Aún no hay tablas. Crea una para empezar a modelar sin escribir SQL.</p>
         <button onClick={addTable} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#1A6CF6] px-3 py-2 text-sm font-medium text-white">
@@ -37,7 +37,7 @@ export function EditorInspector() {
   }
 
   return (
-    <aside className="flex h-full min-h-0 w-full flex-col overflow-hidden border-l border-[#1E2A45] bg-[#0D1424]/95 text-white">
+    <aside className="flex h-full min-h-0 w-full flex-col overflow-y-auto border-l border-[#1E2A45] bg-[#0D1424]/95 text-white">
       <div className="shrink-0 border-b border-[#1E2A45] bg-[#0D1424] p-4">
         <p className="text-xs uppercase tracking-[0.18em] text-[#64748B]">Inspector</p>
         <select

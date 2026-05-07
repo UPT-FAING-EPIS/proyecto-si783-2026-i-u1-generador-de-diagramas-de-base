@@ -15,7 +15,7 @@ interface ProjectItem {
     updatedAt: Date
     createdAt?: Date
     ownerId: string
-    deleted_at?: Date | null
+    deleted_at?: string | Date | null
   }
   role: string
   members?: { id: string; name: string }[]

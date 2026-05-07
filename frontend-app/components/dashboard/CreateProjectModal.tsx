@@ -1,17 +1,20 @@
 'use client'
 
 import { useState } from 'react'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { createProjectAction } from '@/lib/backend/actions/projects/create'
-import { Plus } from 'lucide-react'
 import { TagInput } from '@/components/ui/TagInput'
 
-export function CreateProjectModal() {
-  const [open, setOpen] = useState(false)
+interface CreateProjectModalProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}
+
+export function CreateProjectModal({ open, onOpenChange }: CreateProjectModalProps) {
   const [error, setError] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
   const [tags, setTags] = useState<string[]>([])
@@ -30,20 +33,14 @@ export function CreateProjectModal() {
       setError(result.error)
       setIsPending(false)
     } else {
-      setOpen(false)
+      onOpenChange(false)
       setIsPending(false)
       setTags([])
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button id="create-project-btn" className="bg-[#1A6CF6] hover:bg-blue-700 text-white shadow-lg shadow-[#1A6CF6]/20 transition-all hover:-translate-y-[1px]">
-          <Plus className="w-4 h-4 mr-2" />
-          Crear Proyecto
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px] bg-[#111827] border-[#1E2A45] text-[#E2E8F0] p-6 shadow-xl shadow-black/50">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">Nuevo Proyecto</DialogTitle>
@@ -89,7 +86,7 @@ export function CreateProjectModal() {
             <Button 
               type="button" 
               variant="ghost" 
-              onClick={() => setOpen(false)}
+              onClick={() => onOpenChange(false)}
               className="hover:bg-[#1E2A45] hover:text-white text-[#94A3B8]"
             >
               Cancelar

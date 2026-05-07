@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Search, LayoutGrid, List, X } from 'lucide-react'
+import { Search, LayoutGrid, List, X, Plus } from 'lucide-react'
 import { ProjectGrid } from './ProjectGrid'
 import { ProjectListView } from './ProjectListView'
 import { CreateProjectModal } from './CreateProjectModal'
@@ -14,7 +14,7 @@ interface ProjectItem {
     updatedAt: Date
     createdAt?: Date
     ownerId: string
-    deleted_at?: Date | null
+    deleted_at?: string | Date | null
   }
   role: string
   members?: { id: string; name: string }[]
@@ -30,6 +30,7 @@ interface DashboardClientProps {
 
 export function DashboardClient({ projects, currentUserId, currentUser, activeSection, onSectionChange }: DashboardClientProps) {
   const [query, setQuery] = useState('')
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
     try {
       if (typeof window === 'undefined') return 'grid'
@@ -84,8 +85,15 @@ export function DashboardClient({ projects, currentUserId, currentUser, activeSe
       {/* Header: título + acciones */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-semibold text-[#E2E8F0]">Mis Proyectos</h2>
-        <CreateProjectModal />
+        <button
+          onClick={() => setIsCreateProjectOpen(true)}
+          className="bg-[#1A6CF6] hover:bg-blue-700 text-white shadow-lg shadow-[#1A6CF6]/20 transition-all hover:-translate-y-[1px] flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+        >
+          <Plus className="w-4 h-4" />
+          Crear Proyecto
+        </button>
       </div>
+      <CreateProjectModal open={isCreateProjectOpen} onOpenChange={setIsCreateProjectOpen} />
 
       {/* Toolbar: búsqueda + toggle */}
       <div className="flex items-center gap-3 mb-6">
