@@ -63,7 +63,9 @@ function processJsonObject(obj: Record<string, unknown>): ParseResult {
     return processJsonSchema(obj)
   }
 
-  const entries = Object.entries(obj)
+  const hasStructuredTables = obj.tables && typeof obj.tables === 'object' && !Array.isArray(obj.tables)
+  const tableSource = hasStructuredTables ? obj.tables as Record<string, unknown> : obj
+  const entries = Object.entries(tableSource).filter(([key]) => key !== 'relations')
   const positions = calculateLayout(entries.length)
 
   entries.forEach(([collectionName, fields], index) => {
@@ -72,11 +74,22 @@ function processJsonObject(obj: Record<string, unknown>): ParseResult {
     if (typeof fields === 'object' && fields !== null) {
       Object.entries(fields as Record<string, unknown>).forEach(([fieldName, fieldType]) => {
         let typeStr = 'UNKNOWN'
-        const isForeignKey = false
+        let isPrimaryKey = fieldName === '_id' || fieldName === 'id'
+        let isForeignKey = false
+        let references: Column['references'] = undefined
         if (typeof fieldType === 'string') {
           typeStr = fieldType.toUpperCase()
         } else if (typeof fieldType === 'object' && fieldType !== null) {
-          typeStr = 'OBJECT'
+          const descriptor = fieldType as { type?: unknown; primaryKey?: unknown; isPrimaryKey?: unknown; references?: unknown }
+          typeStr = typeof descriptor.type === 'string' ? descriptor.type.toUpperCase() : 'OBJECT'
+          isPrimaryKey = Boolean(descriptor.primaryKey ?? descriptor.isPrimaryKey ?? isPrimaryKey)
+          if (descriptor.references && typeof descriptor.references === 'object') {
+            const ref = descriptor.references as { table?: unknown; column?: unknown }
+            if (typeof ref.table === 'string' && typeof ref.column === 'string') {
+              isForeignKey = true
+              references = { table: ref.table, column: ref.column }
+            }
+          }
         } else {
           typeStr = String(typeof fieldType).toUpperCase()
         }
@@ -84,8 +97,9 @@ function processJsonObject(obj: Record<string, unknown>): ParseResult {
         columns.push({
           name: fieldName,
           type: typeStr,
-          isPrimaryKey: fieldName === '_id' || fieldName === 'id',
-          isForeignKey: isForeignKey,
+          isPrimaryKey,
+          isForeignKey,
+          references,
         })
       })
     }
@@ -95,6 +109,26 @@ function processJsonObject(obj: Record<string, unknown>): ParseResult {
       type: 'tableNode',
       position: positions[index] ?? { x: 0, y: 0 },
       data: { tableName: collectionName, columns }
+    })
+  })
+
+  const tableIdByName = new Map(nodes.map((node) => [node.data.tableName, node.id]))
+  const relationItems = Array.isArray(obj.relations) ? obj.relations : []
+  relationItems.forEach((item, index) => {
+    if (!item || typeof item !== 'object') return
+    const relation = item as { source?: unknown; target?: unknown; sourceHandle?: unknown; targetHandle?: unknown }
+    if (typeof relation.source !== 'string' || typeof relation.target !== 'string') return
+    const source = tableIdByName.get(relation.source) ?? relation.source
+    const target = tableIdByName.get(relation.target) ?? relation.target
+    edges.push({
+      id: `json-rel-${source}-${target}-${index}`,
+      source,
+      target,
+      sourceHandle: typeof relation.sourceHandle === 'string' ? relation.sourceHandle : undefined,
+      targetHandle: typeof relation.targetHandle === 'string' ? relation.targetHandle : undefined,
+      type: 'smoothstep',
+      animated: false,
+      style: { stroke: '#00D4FF' },
     })
   })
 

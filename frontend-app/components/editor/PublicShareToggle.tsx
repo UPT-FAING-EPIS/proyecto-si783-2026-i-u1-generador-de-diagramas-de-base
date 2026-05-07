@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Copy, Link, Loader2 } from 'lucide-react'
+import { Check, ChevronDown, Copy, Eye, Link, Loader2, Pencil } from 'lucide-react'
 import { togglePublicAction } from '@/lib/backend/actions/projects/togglePublic'
 
 interface PublicShareToggleProps {
@@ -11,10 +11,18 @@ interface PublicShareToggleProps {
   initialShareAccess?: 'view' | 'edit'
 }
 
+const ACCESS_OPTIONS = [
+  { value: 'view' as const, label: 'Solo ver', icon: Eye },
+  { value: 'edit' as const, label: 'Puede editar', icon: Pencil },
+]
+
 export function PublicShareToggle({ diagramId, initialIsPublic, initialShareAccess = 'view' }: PublicShareToggleProps) {
   const [isPublic, setIsPublic] = useState(initialIsPublic)
   const [shareAccess, setShareAccess] = useState<'view' | 'edit'>(initialShareAccess)
   const [loading, setLoading] = useState(false)
+  const [accessOpen, setAccessOpen] = useState(false)
+  const activeAccess = ACCESS_OPTIONS.find((option) => option.value === shareAccess) ?? ACCESS_OPTIONS[0]
+  const ActiveAccessIcon = activeAccess.icon
 
   const publicUrl =
     typeof window === 'undefined'
@@ -66,16 +74,54 @@ export function PublicShareToggle({ diagramId, initialIsPublic, initialShareAcce
         </span>
       </button>
 
-      <select
-        value={shareAccess}
-        disabled={!isPublic || loading}
-        onChange={(event) => persist(true, event.target.value as 'view' | 'edit')}
-        className="h-7 rounded-lg border border-[#1E2A45] bg-[#111827] px-2 text-xs text-[#E2E8F0] outline-none disabled:opacity-50"
-        title="Permiso del enlace"
+      <div
+        className="relative"
+        onBlur={(event) => {
+          const nextFocus = event.relatedTarget
+          if (!(nextFocus instanceof Node) || !event.currentTarget.contains(nextFocus)) {
+            setAccessOpen(false)
+          }
+        }}
       >
-        <option value="view">Solo ver</option>
-        <option value="edit">Puede editar</option>
-      </select>
+        <button
+          type="button"
+          disabled={!isPublic || loading}
+          onClick={() => setAccessOpen((value) => !value)}
+          className="flex h-7 min-w-32 items-center justify-between gap-2 rounded-lg border border-[#1E2A45] bg-[#111827] px-2 text-xs text-[#E2E8F0] outline-none transition hover:border-[#1A6CF6] disabled:opacity-50"
+          title="Permiso del enlace"
+        >
+          <span className="flex items-center gap-1.5">
+            <ActiveAccessIcon size={13} />
+            {activeAccess.label}
+          </span>
+          <ChevronDown size={13} className={`transition-transform ${accessOpen ? 'rotate-180' : ''}`} />
+        </button>
+
+        {accessOpen && isPublic && !loading && (
+          <div className="absolute right-0 top-9 z-50 w-40 overflow-hidden rounded-lg border border-[#1E2A45] bg-[#0B1322] p-1 shadow-2xl shadow-black/50">
+            {ACCESS_OPTIONS.map(({ value, label, icon: Icon }) => (
+              <button
+                key={value}
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  setAccessOpen(false)
+                  if (value !== shareAccess) void persist(true, value)
+                }}
+                className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition ${
+                  value === shareAccess
+                    ? 'bg-[#123A79] text-[#BFDBFE]'
+                    : 'text-[#CBD5E1] hover:bg-[#111827] hover:text-white'
+                }`}
+              >
+                <Icon size={13} />
+                <span className="flex-1">{label}</span>
+                {value === shareAccess && <Check size={13} />}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       <button
         onClick={handleCopy}

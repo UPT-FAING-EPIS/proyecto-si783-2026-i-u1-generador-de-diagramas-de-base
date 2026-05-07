@@ -71,7 +71,7 @@ export async function createVersionAction(
     const nextVersion = (result[0]?.max ?? 0) + 1
     const versionSnapshots = hasVersionSnapshots(snapshots)
       ? snapshots
-      : serializeVersionSnapshots(flowJson.nodes)
+      : serializeVersionSnapshots(flowJson.nodes, flowJson.edges)
 
     await db.insert(diagramVersions).values({
       diagramId,

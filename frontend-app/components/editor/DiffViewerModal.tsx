@@ -15,7 +15,6 @@ import {
   Plus,
   Search,
   Table2,
-  X,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -113,8 +112,6 @@ export function DiffViewerModal({ open, onClose, projectId, initialVersionId }: 
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [sideBySide, setSideBySide] = useState(true)
-  const [syncScroll, setSyncScroll] = useState(true)
-  const [hideUnchanged, setHideUnchanged] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -190,9 +187,6 @@ export function DiffViewerModal({ open, onClose, projectId, initialVersionId }: 
               <CheckCircle2 size={14} className="text-[#60A5FA]" />
               Snapshots
             </div>
-            <button onClick={onClose} className="rounded-md border border-[#1E2A45] p-1.5 text-[#C7D2FE] hover:bg-[#111827]" aria-label="Cerrar">
-              <X size={16} />
-            </button>
           </div>
         </div>
 
@@ -213,17 +207,25 @@ export function DiffViewerModal({ open, onClose, projectId, initialVersionId }: 
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-[minmax(180px,240px)_auto_minmax(180px,240px)_1fr] items-end gap-3 border-b border-[#1E2A45] bg-[#091221] px-4 py-3">
+            <div className="grid grid-cols-[minmax(180px,240px)_auto_minmax(180px,240px)_1px_1fr] items-center gap-3 border-b border-[#1E2A45] bg-[#091221] px-4 py-3">
               <VersionPicker label="Version A" value={versionA} versions={versions} onChange={setVersionA} />
-              <div className="flex h-8 items-center">
-                <span className="rounded-md border border-[#1E2A45] bg-[#0D1424] p-1.5 text-[#C7D2FE]">
+              <button
+                type="button"
+                onClick={() => {
+                  setVersionA(versionB)
+                  setVersionB(versionA)
+                }}
+                disabled={!versionA || !versionB}
+                className="mt-5 flex h-8 w-8 items-center justify-center rounded-md border border-[#1E2A45] bg-[#0D1424] text-[#C7D2FE] transition hover:border-[#1A6CF6] hover:text-white disabled:opacity-50"
+                title="Intercambiar versiones"
+              >
                   <GitCompareArrows size={16} />
-                </span>
-              </div>
+              </button>
               <VersionPicker label="Version B" value={versionB} versions={versions} onChange={setVersionB} />
-              <div className="min-w-0">
+              <div className="h-12 w-px bg-[#1E2A45]" />
+              <div className="min-w-0 self-center">
                 <div className="mb-1.5 text-xs font-semibold text-[#B6C7E3]">Formato</div>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-4 items-center gap-2">
                   {DIALECTS.map(({ value, label, icon: Icon, tone }) => (
                     <button
                       key={value}
@@ -295,8 +297,6 @@ export function DiffViewerModal({ open, onClose, projectId, initialVersionId }: 
                   >
                     Unificada
                   </button>
-                  <Toggle checked={syncScroll} onChange={setSyncScroll} label="Sincronizar scroll" />
-                  <Toggle checked={hideUnchanged} onChange={setHideUnchanged} label="Mostrar solo cambios" />
                 </div>
 
                 <div className="grid grid-cols-2 border-b border-[#1E2A45] bg-[#111827] text-[11px] font-semibold text-[#B6C7E3]">
@@ -322,7 +322,7 @@ export function DiffViewerModal({ open, onClose, projectId, initialVersionId }: 
                 ) : (
                   <div className="min-h-0 flex-1">
                     <DiffEditor
-                      key={`${versionA}-${versionB}-${dialect}-${sideBySide}-${hideUnchanged}`}
+                      key={`${versionA}-${versionB}-${dialect}-${sideBySide}`}
                       original={codeA}
                       modified={codeB}
                       language={language}
@@ -339,11 +339,9 @@ export function DiffViewerModal({ open, onClose, projectId, initialVersionId }: 
                         renderOverviewRuler: true,
                         ignoreTrimWhitespace: false,
                         enableSplitViewResizing: true,
-                        hideUnchangedRegions: { enabled: hideUnchanged },
                         scrollBeyondLastColumn: 0,
                         scrollbar: {
                           alwaysConsumeMouseWheel: false,
-                          useShadows: syncScroll,
                         },
                       }}
                     />
@@ -421,16 +419,5 @@ function SummaryCard({
         <span className="text-[11px] opacity-80">{label}</span>
       </span>
     </div>
-  )
-}
-
-function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (checked: boolean) => void; label: string }) {
-  return (
-    <button onClick={() => onChange(!checked)} className="ml-auto flex items-center gap-2 text-xs text-[#E2E8F0] first:ml-0">
-      <span className={`flex h-4 w-7 items-center rounded-full p-0.5 transition ${checked ? 'bg-[#1A6CF6]' : 'bg-[#334155]'}`}>
-        <span className={`h-3 w-3 rounded-full bg-white transition ${checked ? 'translate-x-3' : ''}`} />
-      </span>
-      {label}
-    </button>
   )
 }

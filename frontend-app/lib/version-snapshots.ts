@@ -18,6 +18,13 @@ type SnapshotNode = {
   }
 }
 
+type SnapshotEdge = {
+  source?: string
+  sourceHandle?: string | null
+  target?: string
+  targetHandle?: string | null
+}
+
 export type VersionSnapshots = Record<EditorDialect, string>
 
 function isTableNode(node: SnapshotNode) {
@@ -51,16 +58,37 @@ function normalizeType(type: string | undefined, dialect: EditorDialect) {
   return type || 'TEXT'
 }
 
-export function serializeSnapshotSchema(nodes: unknown[] | undefined, dialect: EditorDialect) {
+export function serializeSnapshotSchema(nodes: unknown[] | undefined, dialect: EditorDialect, edges: unknown[] = []) {
   const tables = (nodes ?? []).filter((node): node is SnapshotNode => isTableNode(node as SnapshotNode))
 
   if (dialect === 'json') {
-    const json = Object.fromEntries(
-      tables.map((table) => [
-        table.data?.tableName ?? 'tabla',
-        Object.fromEntries((table.data?.columns ?? []).map((column) => [column.name ?? 'campo', column.type || 'string'])),
-      ])
-    )
+    const json = {
+      tables: Object.fromEntries(
+        tables.map((table) => [
+          table.data?.tableName ?? 'tabla',
+          Object.fromEntries(
+            (table.data?.columns ?? []).map((column) => [
+              column.name ?? 'campo',
+              {
+                type: column.type || 'string',
+                primaryKey: Boolean(column.isPrimaryKey),
+                nullable: column.nullable !== false,
+                references: column.references,
+              },
+            ])
+          ),
+        ])
+      ),
+      relations: edges
+        .map((edge) => edge as SnapshotEdge)
+        .filter((edge) => typeof edge.source === 'string' && typeof edge.target === 'string')
+        .map((edge) => ({
+          source: edge.source,
+          sourceHandle: edge.sourceHandle,
+          target: edge.target,
+          targetHandle: edge.targetHandle,
+        })),
+    }
     return JSON.stringify(json, null, 2)
   }
 
@@ -96,12 +124,12 @@ export function serializeSnapshotSchema(nodes: unknown[] | undefined, dialect: E
   }).join('\n\n')
 }
 
-export function serializeVersionSnapshots(nodes: unknown[] | undefined): VersionSnapshots {
+export function serializeVersionSnapshots(nodes: unknown[] | undefined, edges: unknown[] = []): VersionSnapshots {
   return {
     postgresql: serializeSnapshotSchema(nodes, 'postgresql'),
     mysql: serializeSnapshotSchema(nodes, 'mysql'),
     sqlserver: serializeSnapshotSchema(nodes, 'sqlserver'),
-    json: serializeSnapshotSchema(nodes, 'json'),
+    json: serializeSnapshotSchema(nodes, 'json', edges),
   }
 }
 

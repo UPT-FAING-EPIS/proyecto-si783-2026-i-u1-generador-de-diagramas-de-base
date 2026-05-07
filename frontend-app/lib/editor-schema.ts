@@ -101,16 +101,35 @@ function normalizeType(type: string, dialect: EditorDialect) {
   return type || 'TEXT'
 }
 
-export function serializeSchema(nodes: Node[], dialect: EditorDialect) {
+export function serializeSchema(nodes: Node[], dialect: EditorDialect, edges: Edge[] = []) {
   const tables = nodes.filter(isEditorNode)
 
   if (dialect === 'json') {
-    const json = Object.fromEntries(
-      tables.map((table) => [
-        table.data.tableName,
-        Object.fromEntries(table.data.columns.map((column) => [column.name, column.type || 'string'])),
-      ])
+    const tableMap = Object.fromEntries(
+      tables.map((table) => {
+        const fields = Object.fromEntries(
+          table.data.columns.map((column) => [
+            column.name,
+            {
+              type: column.type || 'string',
+              primaryKey: Boolean(column.isPrimaryKey),
+              nullable: column.nullable !== false,
+              references: column.references,
+            },
+          ])
+        )
+        return [table.data.tableName, fields]
+      })
     )
+    const json = {
+      tables: tableMap,
+      relations: edges.map((edge) => ({
+        source: edge.source,
+        sourceHandle: edge.sourceHandle,
+        target: edge.target,
+        targetHandle: edge.targetHandle,
+      })),
+    }
     return JSON.stringify(json, null, 2)
   }
 
@@ -142,12 +161,12 @@ export function serializeSchema(nodes: Node[], dialect: EditorDialect) {
   }).join('\n\n')
 }
 
-export function serializeAllDialects(nodes: Node[]) {
+export function serializeAllDialects(nodes: Node[], edges: Edge[] = []) {
   return {
     postgresql: serializeSchema(nodes, 'postgresql'),
     mysql: serializeSchema(nodes, 'mysql'),
     sqlserver: serializeSchema(nodes, 'sqlserver'),
-    json: serializeSchema(nodes, 'json'),
+    json: serializeSchema(nodes, 'json', edges),
   }
 }
 

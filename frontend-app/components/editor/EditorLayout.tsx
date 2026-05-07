@@ -2,13 +2,12 @@
 
 import { useEffect, useRef, useState, forwardRef, type ElementType } from 'react'
 import { ReactFlowProvider, useReactFlow, type Edge, type Node } from '@xyflow/react'
-import { ArrowLeft, Braces, CheckCircle2, Code2, Database, FileJson, GitBranch, LayoutGrid, PanelRight, Play, Plus, Save, History } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Code2, Database, FileJson, History, PanelRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Canvas } from './Canvas'
 import { EditorPanel } from './EditorPanel'
 import { EditorInspector } from './EditorInspector'
 import { ExportMenu } from './ExportMenu'
-import { CommitModal } from './CommitModal'
 import { VersionHistorySheet } from './VersionHistorySheet'
 import { PublicShareToggle } from './PublicShareToggle'
 import { PresenceToolbar } from './PresenceToolbar'
@@ -60,8 +59,6 @@ function EditorLayoutInner({
   const setDialect = useEditorStore((state) => state.setDialect)
   const setSqlValue = useEditorStore((state) => state.setSqlValue)
   const setNodesAndEdges = useEditorStore((state) => state.setNodesAndEdges)
-  const addTable = useEditorStore((state) => state.addTable)
-  const syncSqlFromCanvas = useEditorStore((state) => state.syncSqlFromCanvas)
   const [saving, setSaving] = useState(false)
   const [savedLabel, setSavedLabel] = useState('Listo para editar')
   const [showSqlPanel, setShowSqlPanel] = useState(true)
@@ -69,19 +66,27 @@ function EditorLayoutInner({
   const [diffModal, setDiffModal] = useState<{ open: boolean; initialVersionId?: string } | null>(null)
 
   const [sqlWidth, setSqlWidth] = useState(450)
-  const isResizing = useRef(false)
+  const [inspectorWidth, setInspectorWidth] = useState(320)
+  const resizeTarget = useRef<'sql' | 'inspector' | null>(null)
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing.current) return
-      const newWidth = e.clientX - 56
-      if (newWidth > 200 && newWidth < window.innerWidth - 300) {
-        setSqlWidth(newWidth)
+      if (!resizeTarget.current) return
+      if (resizeTarget.current === 'sql') {
+        const newWidth = e.clientX - 56
+        if (newWidth > 220 && newWidth < window.innerWidth - 560) {
+          setSqlWidth(newWidth)
+        }
+      } else {
+        const newWidth = window.innerWidth - e.clientX
+        if (newWidth > 280 && newWidth < window.innerWidth - 620) {
+          setInspectorWidth(newWidth)
+        }
       }
     }
     const handleMouseUp = () => {
-      if (isResizing.current) {
-        isResizing.current = false
+      if (resizeTarget.current) {
+        resizeTarget.current = null
         document.body.style.cursor = 'default'
       }
     }
@@ -160,18 +165,11 @@ function EditorLayoutInner({
     setDiffModal({ open: true, initialVersionId: versionId })
   }
 
-  function handleValidate() {
-    if (stats.warnings > 0) {
-      toast.warning(`Hay ${stats.warnings} advertencia(s): revisa claves primarias o tablas vacías.`)
-      return
-    }
-    toast.success('Todo listo. No se encontraron errores.')
-  }
-
-  function focusRelations() {
-    useEditorStore.getState().setHoveredNodeId(null)
-    fitView({ duration: 350, padding: 0.24 })
-    toast.info('Mostrando todas las relaciones del diagrama.')
+  function handleDialectChange(value: EditorDialect) {
+    setDialect(value)
+    window.setTimeout(() => {
+      fitView({ duration: 350, padding: 0.24 })
+    }, 80)
   }
 
   // Removido editorGridClass para usar layout de flex ajustables.
@@ -200,7 +198,7 @@ function EditorLayoutInner({
             {DIALECTS.map(({ value, label, icon: Icon }) => (
               <button
                 key={value}
-                onClick={() => setDialect(value)}
+                onClick={() => handleDialectChange(value)}
                 className={`flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs transition ${mode === value ? 'bg-[#123A79] text-[#BFDBFE]' : 'text-[#64748B] hover:text-white'}`}
               >
                 <Icon size={13} />
@@ -222,21 +220,6 @@ function EditorLayoutInner({
           {showSqlPanel && (
             <>
               <div style={{ width: sqlWidth }} className="flex min-w-0 shrink-0 flex-col border-r border-[#1E2A45] bg-[#0B1322]">
-                <div className="flex h-11 items-center gap-2 border-b border-[#1E2A45] px-3">
-                  <button onClick={syncSqlFromCanvas} className="rounded-lg border border-[#1E2A45] bg-[#111827] px-3 py-1.5 text-xs text-[#94A3B8] hover:text-white">
-                    Formatear
-                  </button>
-                  <button onClick={handleValidate} className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300">
-                    Validar
-                  </button>
-                  <button onClick={() => toast.info('El editor ya sincroniza el esquema en vivo.')} className="rounded-lg bg-[#123A79] px-3 py-1.5 text-xs text-[#BFDBFE]">
-                    <Play className="mr-1 inline h-3 w-3" />
-                    Ejecutar
-                  </button>
-                  <button onClick={addTable} className="ml-auto rounded-lg border border-[#1E2A45] p-1.5 text-[#94A3B8] hover:text-white" title="Agregar tabla visual">
-                    <Plus size={15} />
-                  </button>
-                </div>
                 <EditorPanel mode={mode} emitSqlChange={emitSqlChange} />
                 <div className="border-t border-[#1E2A45] bg-[#0D1424] p-3">
                   <div className={`rounded-xl border p-3 text-sm ${stats.warnings ? 'border-amber-500/30 bg-amber-500/10 text-amber-200' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'}`}>
@@ -249,7 +232,7 @@ function EditorLayoutInner({
               <div
                 className="w-1.5 cursor-col-resize hover:bg-[#1A6CF6] active:bg-[#1A6CF6] z-50 transition-colors -ml-1.5"
                 onMouseDown={() => {
-                  isResizing.current = true
+                  resizeTarget.current = 'sql'
                   document.body.style.cursor = 'col-resize'
                 }}
               />
@@ -266,9 +249,18 @@ function EditorLayoutInner({
           </div>
 
           {showInspector && (
-            <div className="w-[320px] shrink-0 border-l border-[#1E2A45] flex flex-col min-h-0 bg-[#0B1322]">
-              <EditorInspector />
-            </div>
+            <>
+              <div
+                className="z-50 -mr-1.5 w-1.5 cursor-col-resize transition-colors hover:bg-[#1A6CF6] active:bg-[#1A6CF6]"
+                onMouseDown={() => {
+                  resizeTarget.current = 'inspector'
+                  document.body.style.cursor = 'col-resize'
+                }}
+              />
+              <div style={{ width: inspectorWidth }} className="flex min-h-0 shrink-0 flex-col border-l border-[#1E2A45] bg-[#0B1322]">
+                <EditorInspector />
+              </div>
+            </>
           )}
         </section>
       </main>

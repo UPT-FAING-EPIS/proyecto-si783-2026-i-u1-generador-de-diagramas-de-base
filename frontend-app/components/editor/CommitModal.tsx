@@ -32,7 +32,7 @@ export function CommitModal({ projectId, children }: { projectId: string; childr
     // ✅ Serializar y deserializar para limpiar referencias circulares
     const flowJson = JSON.parse(JSON.stringify(rawFlow))
     
-    const snapshots = serializeVersionSnapshots(flowJson.nodes ?? [])
+    const snapshots = serializeVersionSnapshots(flowJson.nodes ?? [], flowJson.edges ?? [])
     const result = await createVersionAction(projectId, flowJson, sqlValue, message.trim(), dialect, snapshots)
     
     setLoading(false)

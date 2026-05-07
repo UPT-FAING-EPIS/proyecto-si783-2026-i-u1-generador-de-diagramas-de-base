@@ -59,7 +59,7 @@ export async function getVersionDetailAction(versionId: string, projectId?: stri
     const flow = toFlowJson(version.flowJson)
     const snapshots = hasVersionSnapshots(version.snapshots)
       ? version.snapshots
-      : serializeVersionSnapshots(flow.nodes)
+      : serializeVersionSnapshots(flow.nodes, flow.edges)
 
     return {
       data: {
