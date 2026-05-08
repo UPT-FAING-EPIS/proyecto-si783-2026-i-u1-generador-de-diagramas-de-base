@@ -51,7 +51,7 @@ function EditorLayoutInner({
   initialIsPublic = false,
   initialShareAccess = 'view',
 }: EditorLayoutProps) {
-  const { toObject, fitView } = useReactFlow()
+  const { toObject, fitView, setViewport } = useReactFlow()
   const nodes = useEditorStore((state) => state.nodes)
   const edges = useEditorStore((state) => state.edges)
   const sqlValue = useEditorStore((state) => state.sqlValue)
@@ -182,10 +182,20 @@ function EditorLayoutInner({
     }
 
     const flow = toFlowJson(result.flowJson)
+    const nextDialect = (result.dialect as EditorDialect) || 'postgresql'
 
-    setSqlValue(result.sqlContent ?? '')
-    setDialect((result.dialect as EditorDialect) || 'postgresql')
+    useEditorStore.getState().setSyncPaused(true)
     setNodesAndEdges(flow.nodes ?? [], flow.edges ?? [])
+    setDialect(nextDialect)
+    setSqlValue(result.sqlContent ?? '')
+
+    window.requestAnimationFrame(() => {
+      if (flow.viewport) {
+        void setViewport(flow.viewport, { duration: 250 })
+      } else {
+        void fitView({ duration: 350, padding: 0.24 })
+      }
+    })
 
     toast.success(`Versión v${result.versionNumber} restaurada`)
   }
@@ -243,7 +253,7 @@ function EditorLayoutInner({
       </aside>
 
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 shrink-0 items-center gap-3 overflow-hidden border-b border-[#1E2A45] bg-[#0B1322]/95 px-4 backdrop-blur">
+        <header className="relative z-[100] flex h-14 shrink-0 items-center gap-3 overflow-visible border-b border-[#1E2A45] bg-[#0B1322]/95 px-4 backdrop-blur">
           <a
             href="/dashboard"
             className="rounded-lg p-2 text-[#94A3B8] hover:bg-[#111827] hover:text-white"
@@ -255,7 +265,7 @@ function EditorLayoutInner({
           <span className="text-[#334155]">/</span>
           <h1 className="max-w-52 truncate text-sm font-semibold">{projectName}</h1>
 
-          <div className="mx-auto flex rounded-xl border border-[#1E2A45] bg-[#0A0F1E] p-1">
+          <div className="mx-auto hidden shrink-0 rounded-xl border border-[#1E2A45] bg-[#0A0F1E] p-1 md:flex">
             {DIALECTS.map(({ value, label, icon: Icon }) => (
               <button
                 key={value}
@@ -271,20 +281,22 @@ function EditorLayoutInner({
             ))}
           </div>
 
-          <div className="hidden items-center gap-2 text-xs text-[#C7D2FE] lg:flex">
-            <CheckCircle2 size={15} className="text-emerald-400" />
-            {saving ? 'Guardando...' : savedLabel}
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <div className="hidden items-center gap-2 text-xs text-[#C7D2FE] lg:flex">
+              <CheckCircle2 size={15} className="text-emerald-400" />
+              {saving ? 'Guardando...' : savedLabel}
+            </div>
+
+            <PresenceToolbar projectId={projectId} currentUser={currentUser} />
+
+            <PublicShareToggle
+              diagramId={projectId}
+              initialIsPublic={initialIsPublic}
+              initialShareAccess={initialShareAccess}
+            />
+
+            <ExportMenu projectName={projectName} />
           </div>
-
-          <PresenceToolbar projectId={projectId} currentUser={currentUser} />
-
-          <PublicShareToggle
-            diagramId={projectId}
-            initialIsPublic={initialIsPublic}
-            initialShareAccess={initialShareAccess}
-          />
-
-          <ExportMenu projectName={projectName} />
         </header>
 
         <section className="flex min-h-0 flex-1 overflow-hidden">

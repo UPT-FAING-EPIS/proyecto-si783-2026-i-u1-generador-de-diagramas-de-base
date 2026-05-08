@@ -142,7 +142,7 @@ export function ExportMenu({ projectName }: ExportMenuProps) {
   if (getNodes().length === 0) return null
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="relative shrink-0" ref={menuRef}>
       <button
         onClick={() => setOpen(!open)}
         className="flex items-center gap-1 rounded-lg border border-[#2A3B5D] bg-[#1E2A45] px-3 py-2 text-xs text-white transition-colors hover:bg-[#2A3B5D]"
@@ -151,7 +151,7 @@ export function ExportMenu({ projectName }: ExportMenuProps) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-[80] mt-2 w-56 overflow-hidden rounded-xl border border-[#1E2A45] bg-[#111827] shadow-2xl shadow-black/40">
+        <div className="absolute right-0 top-full z-[120] mt-2 w-56 overflow-hidden rounded-xl border border-[#1E2A45] bg-[#111827] shadow-2xl shadow-black/40">
           <MenuButton onClick={() => handleExportImage('png')} disabled={Boolean(exporting)}>{exporting === 'png' ? 'Exportando PNG...' : 'Exportar PNG'}</MenuButton>
           <MenuButton onClick={() => handleExportImage('svg')} disabled={Boolean(exporting)}>{exporting === 'svg' ? 'Exportando SVG...' : 'Exportar SVG'}</MenuButton>
           <MenuButton onClick={() => handleExportSql('postgresql')}>SQL PostgreSQL</MenuButton>
