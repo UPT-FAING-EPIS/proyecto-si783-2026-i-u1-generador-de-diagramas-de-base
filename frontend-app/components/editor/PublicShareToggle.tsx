@@ -46,7 +46,7 @@ export function PublicShareToggle({ diagramId, initialIsPublic, initialShareAcce
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-[#1E2A45] bg-[#0A0F1E] px-2 py-1">
+    <div className="relative flex items-center gap-2 rounded-xl border border-[#1E2A45] bg-[#0A0F1E] px-2 py-1 z-40">
       <button
         type="button"
         role="switch"
@@ -72,7 +72,7 @@ export function PublicShareToggle({ diagramId, initialIsPublic, initialShareAcce
         value={shareAccess}
         disabled={!isPublic || loading}
         onChange={(event) => persist(true, event.target.value as 'view' | 'edit')}
-        className="h-7 rounded-lg border border-[#1E2A45] bg-[#111827] px-2 text-xs text-[#E2E8F0] outline-none disabled:opacity-50"
+        className="relative h-7 rounded-lg border border-[#1E2A45] bg-[#111827] px-2 text-xs text-[#E2E8F0] outline-none disabled:opacity-50 z-50"
         title="Permiso del enlace"
       >
         <option value="view">Solo ver</option>
