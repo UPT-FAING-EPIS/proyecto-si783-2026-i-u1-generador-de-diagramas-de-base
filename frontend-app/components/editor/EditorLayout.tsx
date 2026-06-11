@@ -10,12 +10,8 @@ import { EditorInspector } from './EditorInspector'
 import { ExportMenu } from './ExportMenu'
 import { VersionHistorySheet } from './VersionHistorySheet'
 import { PublicShareToggle } from './PublicShareToggle'
-import { PresenceToolbar } from './PresenceToolbar'
 import { DiffViewerModal } from './DiffViewerModal'
-import { CollaboratorCursors } from './CollaboratorCursors'
 import { useEditorStore } from '@/store/useEditorStore'
-import { useCollaboratorCursors } from '@/hooks/useCollaboratorCursors'
-import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import { saveDiagramAction } from '@/lib/backend/actions/diagrams/save'
 import { restoreVersionAction } from '@/lib/backend/actions/versions/restore'
 import { getSchemaStats, type EditorDialect } from '@/lib/editor-schema'
@@ -28,7 +24,6 @@ interface EditorLayoutProps {
   initialNodes?: Node[]
   initialEdges?: Edge[]
   dialect?: string
-  currentUser: { id: string; name: string }
   initialIsPublic?: boolean
   initialShareAccess?: 'view' | 'edit'
 }
@@ -47,7 +42,6 @@ function EditorLayoutInner({
   initialNodes = [],
   initialEdges = [],
   dialect = 'postgresql',
-  currentUser,
   initialIsPublic = false,
   initialShareAccess = 'view',
 }: EditorLayoutProps) {
@@ -105,17 +99,6 @@ function EditorLayoutInner({
     }
   }, [])
 
-  const { cursors, handleMouseMove } = useCollaboratorCursors(
-    projectId,
-    currentUser.id,
-    currentUser.name
-  )
-
-  const { emitNodeMove, emitSqlChange, consumeRemoteSchemaUpdate } = useRealtimeSync(
-    projectId,
-    currentUser.id
-  )
-
   const stats = getSchemaStats(nodes, edges)
 
   useEffect(() => {
@@ -124,17 +107,6 @@ function EditorLayoutInner({
     if (initialNodes.length > 0) setNodesAndEdges(initialNodes, initialEdges)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  useEffect(() => {
-    if (nodes.length === 0) return
-    if (consumeRemoteSchemaUpdate()) return
-
-    const timeout = window.setTimeout(() => {
-      emitSqlChange(nodes, edges)
-    }, 350)
-
-    return () => window.clearTimeout(timeout)
-  }, [nodes, edges, emitSqlChange, consumeRemoteSchemaUpdate])
 
   async function handleSave() {
     setSaving(true)
@@ -181,13 +153,13 @@ function EditorLayoutInner({
       return
     }
 
-    const flow = toFlowJson(result.flowJson)
-    const nextDialect = (result.dialect as EditorDialect) || 'postgresql'
+    const flow = toFlowJson(result.data?.flowJson)
+    const nextDialect = (result.data?.activeDialect as EditorDialect) || 'postgresql'
 
     useEditorStore.getState().setSyncPaused(true)
     setNodesAndEdges(flow.nodes ?? [], flow.edges ?? [])
     setDialect(nextDialect)
-    setSqlValue(result.sqlContent ?? '')
+    setSqlValue(result.data?.sqlContent ?? '')
 
     window.requestAnimationFrame(() => {
       if (flow.viewport) {
@@ -197,7 +169,7 @@ function EditorLayoutInner({
       }
     })
 
-    toast.success(`Versión v${result.versionNumber} restaurada`)
+    toast.success(`Versión v${result.data?.versionNumber || '?'} restaurada`)
   }
 
   function handleCompare(versionId: string) {
@@ -228,7 +200,6 @@ function EditorLayoutInner({
   return (
     <div
       className="flex h-full min-h-0 w-full overflow-hidden bg-[#07101F] text-white"
-      onMouseMove={handleMouseMove}
     >
       <aside className="flex w-14 shrink-0 flex-col items-center overflow-hidden border-r border-[#1E2A45] bg-[#0B1322] py-4">
         <Database className="mb-7 h-5 w-5 shrink-0 text-[#B6C7E3]" />
@@ -287,8 +258,6 @@ function EditorLayoutInner({
               {saving ? 'Guardando...' : savedLabel}
             </div>
 
-            <PresenceToolbar projectId={projectId} currentUser={currentUser} />
-
             <PublicShareToggle
               diagramId={projectId}
               initialIsPublic={initialIsPublic}
@@ -307,7 +276,7 @@ function EditorLayoutInner({
                 className="flex min-h-0 min-w-0 shrink-0 flex-col overflow-hidden border-r border-[#1E2A45] bg-[#0B1322]"
               >
                 <div className="min-h-0 flex-1 overflow-hidden">
-                  <EditorPanel mode={mode} emitSqlChange={emitSqlChange} />
+                  <EditorPanel mode={mode} />
                 </div>
 
                 <div className="shrink-0 border-t border-[#1E2A45] bg-[#0D1424] p-3">
@@ -346,7 +315,7 @@ function EditorLayoutInner({
             </div>
 
             <div className="min-h-0 flex-1 overflow-hidden">
-              <Canvas projectId={projectId} emitNodeMove={emitNodeMove} onSave={handleSave} />
+              <Canvas projectId={projectId} emitNodeMove={undefined} onSave={handleSave} />
             </div>
           </div>
 
@@ -372,8 +341,6 @@ function EditorLayoutInner({
           )}
         </section>
       </main>
-
-      <CollaboratorCursors cursors={cursors} />
 
       <DiffViewerModal
         open={diffModal?.open ?? false}

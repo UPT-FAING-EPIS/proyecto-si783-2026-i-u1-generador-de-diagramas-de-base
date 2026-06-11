@@ -26,7 +26,7 @@ export function ProjectListView({ projects }: ProjectListViewProps) {
       {projects.map(item => (
         <a
           key={item.project.id}
-          href={`/editor/${item.project.id}`}
+          href={`/editor?projectId=${item.project.id}`}
           className="flex items-center gap-4 px-4 py-3 rounded-lg transition-all group"
           style={{ backgroundColor: '#0D1117', border: '1px solid #1E2A45' }}
           onMouseEnter={e => (e.currentTarget.style.borderColor = '#1A6CF6')}

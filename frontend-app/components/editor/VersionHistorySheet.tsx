@@ -69,7 +69,7 @@ export function VersionHistorySheet({ projectId, onRestore, onCompare, children 
       return
     }
 
-    toast.success(`Commit v${result.versionNumber} eliminado`)
+    toast.success(`Versión eliminada`)
     await fetchVersions()
   }
 

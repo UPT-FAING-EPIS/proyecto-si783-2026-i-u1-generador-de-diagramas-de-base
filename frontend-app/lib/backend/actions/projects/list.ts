@@ -1,74 +1,40 @@
-import { db } from '../../db'
-import { projects, collaborators, users } from '../../db/schema'
-import { eq, desc, and, ne } from 'drizzle-orm'
-import { createClient } from '../../supabase/server'
+import { projectsAPI } from '@/lib/api/client';
 
-import { sql } from 'drizzle-orm'
-
-export async function getProjectsByUser() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
-
-  const [dbUser] = await db.select().from(users).where(eq(users.authId, user.id)).limit(1)
-  if (!dbUser) return []
-
-  const userProjects = await db
-    .select({
-      project: {
-        id: projects.id,
-        name: projects.name,
-        description: projects.description,
-        ownerId: projects.ownerId,
-        tags: projects.tags,
-        createdAt: projects.createdAt,
-        updatedAt: projects.updatedAt,
-        deleted_at: projects.deletedAt,
-      },
-      role: collaborators.role,
-      members: sql<{id: string, name: string}[]>`(
-        SELECT json_agg(json_build_object('id', u.id, 'name', u.name))
-        FROM ${collaborators} c
-        JOIN ${users} u ON u.id = c.user_id
-        WHERE c.project_id = ${projects.id}
-      )`
-    })
-    .from(projects)
-    .innerJoin(collaborators, eq(collaborators.projectId, projects.id))
-    .where(eq(collaborators.userId, dbUser.id))
-    .orderBy(desc(projects.updatedAt))
-
-  return userProjects
+export interface ProjectListItem {
+  project: {
+    id: string
+    name: string
+    description: string | null
+    ownerId: string
+    tags: string[] | null
+    createdAt: Date
+    updatedAt: Date
+    deleted_at: Date | null
+  }
+  role: string
+  members: { id: string; name: string }[]
 }
 
-export async function getSharedProjects(userId: string) {
-  const sharedProjects = await db
-    .select({
+export async function getProjectsByUser(): Promise<ProjectListItem[]> {
+  try {
+    const projects = await projectsAPI.list();
+    return projects.map((p: any) => ({
       project: {
-        id: projects.id,
-        name: projects.name,
-        description: projects.description,
-        ownerId: projects.ownerId,
-        tags: projects.tags,
-        createdAt: projects.createdAt,
-        updatedAt: projects.updatedAt,
-        deleted_at: projects.deletedAt,
+        id: String(p.id),
+        name: p.name,
+        description: p.description,
+        ownerId: 'local-user',
+        tags: [],
+        createdAt: new Date(p.created_at || new Date()),
+        updatedAt: new Date(p.created_at || new Date()),
+        deleted_at: null
       },
-      role: collaborators.role,
-      members: sql<{id: string, name: string}[]>`(
-        SELECT json_agg(json_build_object('id', u.id, 'name', u.name))
-        FROM ${collaborators} c
-        JOIN ${users} u ON u.id = c.user_id
-        WHERE c.project_id = ${projects.id}
-      )`
-    })
-    .from(projects)
-    .innerJoin(collaborators, eq(collaborators.projectId, projects.id))
-    .where(and(
-      eq(collaborators.userId, userId),
-      ne(collaborators.role, 'owner')
-    ))
-    .orderBy(desc(projects.updatedAt))
-
-  return sharedProjects
+      role: 'owner',
+      members: [{ id: 'local-user', name: 'Usuario Local' }]
+    }));
+  } catch (error) {
+    console.error('Error fetching projects via API:', error);
+    // Para modo local sin el backend corriendo, retornar un arreglo vacío en lugar de romper
+    return [];
+  }
 }

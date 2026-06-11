@@ -2,15 +2,12 @@
 
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import Link from 'next/link'
-import { InviteCollaboratorModal } from './InviteCollaboratorModal'
-import { Clock, MoreVertical, Trash2, RotateCcw, UserPlus } from 'lucide-react'
+import { Clock, MoreVertical, Trash2, RotateCcw } from 'lucide-react'
 import { getRelativeDate } from '@/lib/relativeDate'
 import { getTagColor } from '@/components/ui/TagInput'
 import { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { deleteProjectAction, restoreProjectAction, permanentlyDeleteProjectAction, leaveProjectAction } from '@/lib/backend/actions/projects/delete'
+import { deleteProjectAction, restoreProjectAction, permanentlyDeleteProjectAction } from '@/lib/backend/actions/projects/delete'
 import { toast } from 'sonner'
-import { LogOut } from 'lucide-react'
 
 interface Project {
   id: string
@@ -33,9 +30,7 @@ interface ProjectCardProps {
 
 export function ProjectCard({ project, role, isOwner = false, tags }: ProjectCardProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isInviteOpen, setIsInviteOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  const router = useRouter()
   const isDeleted = Boolean(project.deleted_at)
 
   useEffect(() => {
@@ -58,7 +53,7 @@ export function ProjectCard({ project, role, isOwner = false, tags }: ProjectCar
       toast.error(result.error)
       return
     }
-    toast.success(result.message)
+    toast.success('Proyecto movido a la papelera')
     window.location.reload()
   }
 
@@ -68,7 +63,7 @@ export function ProjectCard({ project, role, isOwner = false, tags }: ProjectCar
       toast.error(result.error)
       return
     }
-    toast.success(result.message)
+    toast.success('Proyecto restaurado')
     window.location.reload()
   }
 
@@ -79,23 +74,12 @@ export function ProjectCard({ project, role, isOwner = false, tags }: ProjectCar
       toast.error(result.error)
       return
     }
-    toast.success(result.message)
-    window.location.reload()
-  }
-
-  const handleLeave = async () => {
-    if (!window.confirm(`¿Estás seguro de que deseas salir del proyecto "${project.name}"?`)) return
-    const result = await leaveProjectAction(project.id)
-    if (result.error) {
-      toast.error(result.error)
-      return
-    }
-    toast.success(result.message)
+    toast.success('Proyecto eliminado definitivamente')
     window.location.reload()
   }
 
   return (
-    <Link href={isDeleted ? '#' : `/editor/${project.id}`} onClick={(event) => { if (isDeleted) event.preventDefault() }} className="block h-full">
+    <Link href={isDeleted ? '#' : `/editor?projectId=${project.id}`} onClick={(event) => { if (isDeleted) event.preventDefault() }} className="block h-full">
       <Card className={`h-full flex flex-col bg-gray-900 group relative rounded-xl border border-gray-800 transition-all duration-200 ${isDeleted ? 'cursor-default opacity-80' : 'cursor-pointer hover:border-blue-500 hover:shadow-xl hover:shadow-blue-500/20'}`}>
         <div className="relative h-28 bg-gradient-to-br from-blue-900 via-purple-900 to-gray-900 flex items-end p-3 rounded-t-xl">
           <div
@@ -106,12 +90,6 @@ export function ProjectCard({ project, role, isOwner = false, tags }: ProjectCar
               opacity: 0.3,
             }}
           />
-
-          <div className="absolute top-2 left-2 z-10">
-            <div className={`text-xs font-medium px-2.5 py-1 rounded-full ${role === 'owner' ? 'bg-blue-600 text-white' : 'bg-gray-600 text-gray-200'}`}>
-              {role === 'owner' ? 'Pro' : 'Free'}
-            </div>
-          </div>
 
           <div className="absolute top-2 right-2 z-20" ref={menuRef}>
             <button
@@ -127,74 +105,45 @@ export function ProjectCard({ project, role, isOwner = false, tags }: ProjectCar
 
             {isMenuOpen && (
               <div className="absolute right-0 top-8 z-50 min-w-44 rounded-lg bg-gray-900 border border-gray-700 shadow-xl py-1">
-                {role === 'owner' ? (
-                  isDeleted ? (
-                    <>
-                      <button
-                        onClick={(event) => {
-                          event.preventDefault()
-                          event.stopPropagation()
-                          setIsMenuOpen(false)
-                          handleRestore()
-                        }}
-                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-emerald-300 hover:bg-emerald-950/40 transition-colors rounded-t-lg"
-                      >
-                        <RotateCcw size={16} />
-                        Restaurar
-                      </button>
-                      <button
-                        onClick={(event) => {
-                          event.preventDefault()
-                          event.stopPropagation()
-                          setIsMenuOpen(false)
-                          handlePermanentDelete()
-                        }}
-                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-950/40 transition-colors rounded-b-lg border-t border-gray-800"
-                      >
-                        <Trash2 size={16} />
-                        Eliminar definitivamente
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={(event) => {
-                          event.preventDefault()
-                          event.stopPropagation()
-                          setIsMenuOpen(false)
-                          setIsInviteOpen(true)
-                        }}
-                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors rounded-t-lg"
-                      >
-                        <UserPlus size={16} />
-                        Invitar
-                      </button>
-                      <button
-                        onClick={(event) => {
-                          event.preventDefault()
-                          event.stopPropagation()
-                          setIsMenuOpen(false)
-                          handleDelete()
-                        }}
-                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-950/40 transition-colors rounded-b-lg"
-                      >
-                        <Trash2 size={16} />
-                        Eliminar
-                      </button>
-                    </>
-                  )
+                {isDeleted ? (
+                  <>
+                    <button
+                      onClick={(event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        setIsMenuOpen(false)
+                        handleRestore()
+                      }}
+                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-emerald-300 hover:bg-emerald-950/40 transition-colors rounded-t-lg"
+                    >
+                      <RotateCcw size={16} />
+                      Restaurar
+                    </button>
+                    <button
+                      onClick={(event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        setIsMenuOpen(false)
+                        handlePermanentDelete()
+                      }}
+                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-950/40 transition-colors rounded-b-lg border-t border-gray-800"
+                    >
+                      <Trash2 size={16} />
+                      Eliminar definitivamente
+                    </button>
+                  </>
                 ) : (
                   <button
                     onClick={(event) => {
                       event.preventDefault()
                       event.stopPropagation()
                       setIsMenuOpen(false)
-                      handleLeave()
+                      handleDelete()
                     }}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-orange-400 hover:bg-orange-950/40 transition-colors rounded-lg"
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-950/40 transition-colors rounded-lg"
                   >
-                    <LogOut size={16} />
-                    Salir del proyecto
+                    <Trash2 size={16} />
+                    Eliminar
                   </button>
                 )}
               </div>
@@ -245,7 +194,7 @@ export function ProjectCard({ project, role, isOwner = false, tags }: ProjectCar
         <CardFooter className="p-3 bg-gray-800/50 border-t border-gray-700 mt-auto rounded-b-xl">
           <div className="flex items-center justify-between w-full">
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${isOwner ? 'bg-green-900/50 text-green-300 border-green-800' : 'bg-purple-900/50 text-purple-300 border-purple-800'}`}>
-              {isOwner ? 'Propietario' : 'Colaborador'}
+              {isOwner ? 'Propietario' : 'Proyecto'}
             </span>
 
             <div className="flex items-center gap-1 text-gray-400 text-xs">
@@ -254,14 +203,6 @@ export function ProjectCard({ project, role, isOwner = false, tags }: ProjectCar
             </div>
           </div>
         </CardFooter>
-
-        {isInviteOpen && (
-          <InviteCollaboratorModal
-            projectId={project.id}
-            open={isInviteOpen}
-            onOpenChange={setIsInviteOpen}
-          />
-        )}
       </Card>
     </Link>
   )

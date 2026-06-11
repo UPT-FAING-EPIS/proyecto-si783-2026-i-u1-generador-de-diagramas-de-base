@@ -110,11 +110,11 @@ export function EditorToolbar({ projectId, projectName, dialect = 'postgresql', 
       }
 
       // Aplicar estado restaurado al store (SIN reload de página)
-      const flow = toFlowJson(result.flowJson)
-      useEditorStore.getState().setSqlValue(result.sqlContent ?? '')
+      const flow = toFlowJson(result.data?.flowJson)
+      useEditorStore.getState().setSqlValue(result.data?.sqlContent ?? '')
       useEditorStore.getState().setNodesAndEdges(flow.nodes ?? [], flow.edges ?? [])
 
-      toast.success(`Versión v${result.versionNumber} restaurada correctamente`)
+      toast.success(`Versión v${result.data?.versionNumber || '?'} restaurada correctamente`)
     } catch {
       toast.error('Ocurrió un error inesperado al restaurar la versión')
     }

@@ -159,7 +159,7 @@ export function DashboardClient({ projects, currentUserId, currentUser, activeSe
 
       {/* Contenido */}
       {activeSection === 'historial' ? (
-        <HistorialSection userId={currentUserId} />
+        <HistorialSection />
       ) : filtered.length === 0 && query ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <p className="text-white font-medium mb-1">

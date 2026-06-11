@@ -26,8 +26,8 @@ export function PublicShareToggle({ diagramId, initialIsPublic, initialShareAcce
 
   const publicUrl =
     typeof window === 'undefined'
-      ? `/public/${diagramId}`
-      : `${window.location.origin}/public/${diagramId}`
+      ? `/public?id=${diagramId}`
+      : `${window.location.origin}/public?id=${diagramId}`
 
   async function persist(nextPublic: boolean, nextAccess = shareAccess) {
     if (loading) return

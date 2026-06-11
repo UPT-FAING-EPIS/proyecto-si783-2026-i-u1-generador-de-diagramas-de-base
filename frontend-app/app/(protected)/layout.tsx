@@ -1,5 +1,11 @@
-export const dynamic = 'force-dynamic'
+// removed force-dynamic
+
+import { ClientInitProvider } from '@/components/providers/ClientInitProvider'
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
-  return <div className="h-full min-h-screen">{children}</div>
+  return (
+    <ClientInitProvider>
+      <div className="h-full min-h-screen">{children}</div>
+    </ClientInitProvider>
+  )
 }

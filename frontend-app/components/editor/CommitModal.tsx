@@ -33,14 +33,21 @@ export function CommitModal({ projectId, children }: { projectId: string; childr
     const flowJson = JSON.parse(JSON.stringify(rawFlow))
     
     const snapshots = serializeVersionSnapshots(flowJson.nodes ?? [], flowJson.edges ?? [])
-    const result = await createVersionAction(projectId, flowJson, sqlValue, message.trim(), dialect, snapshots)
+    const result = await createVersionAction({
+      projectId,
+      flowJson,
+      sqlContent: sqlValue,
+      message: message.trim(),
+      activeDialect: dialect,
+      snapshots
+    })
     
     setLoading(false)
 
     if (result.error) {
       toast.error(result.error)
     } else {
-      toast.success(`Versión v${result.versionNumber} guardada correctamente`)
+      toast.success(`Versión v${result.data?.versionNumber || '?'} guardada correctamente`)
       setOpen(false)
       setMessage('')
     }

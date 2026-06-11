@@ -148,7 +148,7 @@ export function DiffViewerModal({ open, onClose, projectId, initialVersionId }: 
     if (!open) return
     ;[versionA, versionB].filter(Boolean).forEach((versionId) => {
       if (details[versionId]) return
-      getVersionDetailAction(versionId, projectId).then((result) => {
+      getVersionDetailAction(versionId).then((result) => {
         if (result.error || !result.data) {
           toast.error(result.error ?? 'No se pudo cargar la version')
           return
