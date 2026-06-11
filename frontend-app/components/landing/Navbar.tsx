@@ -3,28 +3,28 @@ import { Database } from 'lucide-react';
 
 export default function Navbar() {
   return (
-    <nav className="sticky top-0 z-50 w-full bg-[#0B1120]/80 backdrop-blur-md border-b border-[#1E2A45]">
+    <nav className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
           <Database className="w-6 h-6 text-[#1A6CF6]" />
-          <span className="text-xl font-bold text-white tracking-tight">DBCanvas</span>
+          <span className="text-xl font-bold text-slate-900 tracking-tight">FluxSQL</span>
         </Link>
 
         {/* Center Links (Desktop) */}
         <div className="hidden md:flex items-center gap-8 text-sm font-medium">
-          <Link href="#producto" className="text-slate-400 hover:text-white transition-colors">Producto</Link>
-          <Link href="#caracteristicas" className="text-slate-400 hover:text-white transition-colors">Características</Link>
-          <Link href="#precios" className="text-slate-400 hover:text-white transition-colors">Precios</Link>
-          <Link href="#docs" className="text-slate-400 hover:text-white transition-colors">Docs</Link>
+          <Link href="#producto" className="text-slate-600 hover:text-slate-900 transition-colors">Producto</Link>
+          <Link href="#caracteristicas" className="text-slate-600 hover:text-slate-900 transition-colors">Características</Link>
+          <Link href="#precios" className="text-slate-600 hover:text-slate-900 transition-colors">Precios</Link>
+          <Link href="#docs" className="text-slate-600 hover:text-slate-900 transition-colors">Docs</Link>
         </div>
 
         {/* Right Actions */}
         <div className="flex items-center gap-4">
           <Link 
             href="/login" 
-            className="hidden md:block text-sm font-medium text-slate-400 hover:text-white transition-colors"
+            className="hidden md:block text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
           >
             Iniciar sesión
           </Link>
