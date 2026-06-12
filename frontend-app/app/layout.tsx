@@ -26,7 +26,7 @@ export default function RootLayout({
       className={`${inter.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className={`${inter.variable} min-h-full flex flex-col font-sans antialiased overflow-x-hidden`}>
+      <body className={`${inter.variable} min-h-full flex flex-col font-sans antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"

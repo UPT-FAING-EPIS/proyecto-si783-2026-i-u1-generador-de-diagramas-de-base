@@ -77,21 +77,127 @@ export default function HeroSection() {
   const showVentas = typedCode.includes('CREATE TABLE ventas');
   const showProductos = typedCode.includes('CREATE TABLE productos');
   const showCategorias = typedCode.includes('CREATE TABLE categorias');
-
   return (
     <section className="relative w-full max-w-7xl mx-auto px-6 py-20 flex flex-col items-center justify-center text-center">
       
+      {/* Floating Decorative Elements (Desktop Only) */}
+      <div className="hidden lg:block absolute inset-0 pointer-events-none z-0">
+        
+        {/* Left Side: Users Table */}
+        <motion.div 
+          initial={{ opacity: 0, x: -50, y: 50 }}
+          animate={{ opacity: 1, x: 0, y: [0, -15, 0] }}
+          transition={{ y: { duration: 4, repeat: Infinity, ease: 'easeInOut' }, opacity: { duration: 0.8 }, x: { duration: 0.8 } }}
+          className="absolute top-[15%] left-0 xl:-left-[5%] bg-white rounded-xl shadow-2xl border border-slate-200 w-48 overflow-visible"
+        >
+           {/* SVG Connecting Line going right */}
+           <svg className="absolute top-1/2 left-full w-32 h-32 pointer-events-none overflow-visible">
+              <motion.path 
+                d="M 0 0 C 60 0, 100 40, 150 40" 
+                stroke="#cbd5e1" strokeWidth="2" fill="none" strokeDasharray="5 5"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 0.6 }}
+                transition={{ duration: 1.5, delay: 1 }}
+              />
+              <motion.circle 
+                r="3" fill="#3b82f6"
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                animate={{ offsetDistance: ["0%", "100%"] } as any}
+                transition={{ duration: 3, ease: "linear", repeat: Infinity, delay: 1.5 }}
+                style={{ offsetPath: "path('M 0 0 C 60 0, 100 40, 150 40')" }}
+              />
+           </svg>
+
+           <div className="bg-blue-50 px-3 py-2 border-b border-blue-100 flex items-center gap-2 rounded-t-xl">
+             <div className="w-2 h-2 rounded-full bg-blue-500" />
+             <span className="text-xs font-bold text-blue-900">users</span>
+           </div>
+           <div className="p-3 text-[10px] font-mono text-slate-600 space-y-2 bg-white rounded-b-xl">
+             <div className="flex justify-between items-center"><span>id</span> <span className="text-amber-500 font-bold bg-amber-50 px-1 rounded">PK</span></div>
+             <div className="flex justify-between items-center"><span>email</span> <span className="text-slate-400">VARCHAR</span></div>
+           </div>
+           
+           {/* Decorative code badge */}
+           <motion.div 
+             animate={{ rotate: [-6, -2, -6] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+             className="absolute -bottom-5 -right-6 bg-slate-900 text-emerald-400 text-[10px] font-mono px-3 py-1.5 rounded-lg shadow-xl border border-slate-700 transform -rotate-6"
+           >
+              SELECT * FROM users
+           </motion.div>
+        </motion.div>
+
+        {/* Right Side: Orders Table + Avatar */}
+        <motion.div 
+          initial={{ opacity: 0, x: 50, y: -50 }}
+          animate={{ opacity: 1, x: 0, y: [0, 20, 0] }}
+          transition={{ y: { duration: 5, repeat: Infinity, ease: 'easeInOut' }, opacity: { duration: 0.8, delay: 0.2 }, x: { duration: 0.8, delay: 0.2 } }}
+          className="absolute top-[15%] right-0 xl:-right-[5%] bg-white rounded-xl shadow-2xl border border-slate-200 w-52 overflow-visible"
+        >
+           {/* SVG Connecting Line going left */}
+           <svg className="absolute top-[40%] right-full w-32 h-32 pointer-events-none overflow-visible">
+              <motion.path 
+                d="M 0 0 C -60 0, -100 -50, -150 -50" 
+                stroke="#cbd5e1" strokeWidth="2" fill="none" strokeDasharray="5 5"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 0.6 }}
+                transition={{ duration: 1.5, delay: 1.2 }}
+              />
+              <motion.circle 
+                r="3" fill="#10b981"
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                animate={{ offsetDistance: ["0%", "100%"] } as any}
+                transition={{ duration: 3, ease: "linear", repeat: Infinity, delay: 1.7 }}
+                style={{ offsetPath: "path('M 0 0 C -60 0, -100 -50, -150 -50')" }}
+              />
+           </svg>
+
+           {/* Collaborative Avatar Badge */}
+           <div className="absolute -top-5 -left-5 bg-white rounded-full shadow-xl p-1 flex items-center gap-2 border border-slate-100 transform -rotate-6 z-10">
+             <div className="w-8 h-8 rounded-full bg-emerald-100 overflow-hidden border-2 border-white shadow-sm">
+               <img src="https://i.pravatar.cc/150?u=carlos" alt="Carlos" className="w-full h-full object-cover" />
+             </div>
+             <div className="bg-emerald-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full mr-1 flex items-center gap-1 shadow-md">
+               <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> Editando
+             </div>
+           </div>
+
+           <div className="bg-emerald-50 px-3 py-2 border-b border-emerald-100 flex items-center gap-2 mt-2 rounded-t-xl">
+             <div className="w-2 h-2 rounded-full bg-emerald-500" />
+             <span className="text-xs font-bold text-emerald-900">orders</span>
+           </div>
+           <div className="p-3 text-[10px] font-mono text-slate-600 space-y-2 bg-white rounded-b-xl">
+             <div className="flex justify-between items-center"><span>id</span> <span className="text-amber-500 font-bold bg-amber-50 px-1 rounded">PK</span></div>
+             <div className="flex justify-between items-center relative">
+               <span>user_id</span> <span className="text-emerald-500 font-bold bg-emerald-50 px-1 rounded">FK</span>
+               <div className="absolute -left-5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-emerald-400 rounded-full shadow-[0_0_8px_#34d399] animate-pulse" />
+             </div>
+             <div className="flex justify-between items-center"><span>total</span> <span className="text-slate-400">NUMERIC</span></div>
+           </div>
+        </motion.div>
+
+        {/* Top Left small floating badge */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{ opacity: 1, scale: 1, y: [0, 10, 0], rotate: [0, 5, 0] }}
+          transition={{ y: { duration: 3.5, repeat: Infinity, ease: 'easeInOut' }, rotate: { duration: 4, repeat: Infinity }, scale: { duration: 0.5, delay: 0.5 } }}
+          className="absolute top-[5%] left-[20%] bg-white/80 backdrop-blur-sm p-3 rounded-2xl shadow-lg border border-slate-100"
+        >
+          <Database className="w-6 h-6 text-[#1A6CF6] opacity-80" />
+        </motion.div>
+
+      </div>
+
       {/* Top Illustration Placeholder */}
-      <div className="relative w-full max-w-3xl mx-auto h-24 mb-8 flex justify-center items-end">
-        <div className="z-10 bg-white border-2 border-slate-800 shadow-xl rounded-full px-8 py-3 flex items-center gap-3 transform hover:scale-105 transition-transform cursor-pointer">
-          <span className="font-semibold text-slate-800">Generar diagramas</span>
-          <div className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center">👉</div>
+      <div className="relative w-full max-w-3xl mx-auto h-24 mb-8 flex justify-center items-end z-10">
+        <div className="bg-white border-2 border-slate-800 shadow-[0_8px_0_0_#1e293b] hover:shadow-[0_4px_0_0_#1e293b] hover:translate-y-1 rounded-full px-8 py-3 flex items-center gap-3 transition-all cursor-pointer group">
+          <span className="font-bold text-slate-800 tracking-wide">Generar diagramas</span>
+          <div className="w-6 h-6 bg-amber-100 rounded-full flex items-center justify-center transform group-hover:rotate-12 transition-transform">👉</div>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto flex flex-col items-center z-10">
-        <h1 className="text-5xl lg:text-7xl font-extrabold text-slate-900 leading-tight tracking-tight">
+        <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold text-slate-900 leading-tight tracking-tight">
           Diseña bases de datos <br className="hidden sm:block" />
           en equipo, <span className="text-[#1A6CF6]">en segundos.</span>
         </h1>
@@ -134,10 +240,10 @@ export default function HeroSection() {
       </div>
 
       {/* Split-screen Interactive Demo Container */}
-      <div className="mt-20 w-full max-w-6xl mx-auto relative rounded-3xl overflow-hidden shadow-2xl shadow-[#1A6CF6]/5 border-2 border-slate-200 flex flex-col md:flex-row h-[600px] text-left">
+      <div className="mt-16 md:mt-20 w-full max-w-6xl mx-auto relative rounded-3xl overflow-hidden shadow-2xl shadow-[#1A6CF6]/5 border-2 border-slate-200 flex flex-col md:flex-row h-[750px] md:h-[600px] text-left">
         
         {/* Left Panel: SQL Editor */}
-        <div className={`w-full md:w-[40%] flex flex-col transition-colors duration-300 border-r border-slate-200 ${theme === 'dark' ? 'bg-[#060913]' : 'bg-white'}`}>
+        <div className={`w-full md:w-[40%] h-[400px] md:h-full flex flex-col transition-colors duration-300 border-b md:border-b-0 md:border-r border-slate-200 ${theme === 'dark' ? 'bg-[#060913]' : 'bg-white'}`}>
           <div className={`h-14 border-b flex items-center px-4 justify-between ${theme === 'dark' ? 'border-[#1E2A45] bg-[#0B1120]' : 'border-slate-200 bg-slate-50'}`}>
             <div className="flex gap-2">
               <div className="w-3 h-3 rounded-full bg-red-400"></div>
@@ -197,7 +303,7 @@ export default function HeroSection() {
         {/* Right Panel: Canvas Diagram (Light Miro-Style) */}
         <div 
           ref={canvasRef}
-          className={`w-full md:w-[60%] relative overflow-hidden bg-slate-50 ${activeTool === 'comment' ? 'cursor-cell' : activeTool === 'hand' ? 'cursor-grab' : 'cursor-default'}`}
+          className={`w-full md:w-[60%] h-[350px] md:h-full relative overflow-hidden bg-slate-50 ${activeTool === 'comment' ? 'cursor-cell' : activeTool === 'hand' ? 'cursor-grab' : 'cursor-default'}`}
           onClick={handleCanvasClick}
         >
           {/* Toolbar */}
@@ -220,7 +326,7 @@ export default function HeroSection() {
 
           {/* Actual Nodes & SVG when mounted */}
           {mounted && (
-            <div className="w-full h-full relative scale-90 sm:scale-100 origin-center">
+            <div className="w-[800px] h-[600px] relative origin-top-left scale-[0.45] sm:scale-[0.6] md:scale-75 lg:scale-90 xl:scale-100 transition-transform">
               {/* SVG Connecting Lines */}
               <svg className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
                 <defs>
@@ -258,8 +364,10 @@ export default function HeroSection() {
                 {/* Node 1: clientes */}
                 {showClientes && (
                   <motion.div 
+                    key="node-clientes"
                     initial={{ opacity: 0, scale: 0.8, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.8, y: -10 }}
                     className="absolute top-10 left-16 bg-white border border-slate-300 rounded-xl w-48 shadow-lg overflow-hidden z-10"
                   >
                     <div className="bg-[#FFF9C4] px-3 py-2 border-b border-slate-300 flex items-center gap-2">
@@ -276,8 +384,10 @@ export default function HeroSection() {
                 {/* Node 2: ventas */}
                 {showVentas && (
                   <motion.div 
+                    key="node-ventas"
                     initial={{ opacity: 0, scale: 0.8, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.8, y: -10 }}
                     className="absolute top-[30%] right-12 bg-white border border-slate-300 rounded-xl w-52 shadow-xl z-10 overflow-hidden"
                   >
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#1A6CF6] text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-20 shadow-md">Alejandro</div>
@@ -296,8 +406,10 @@ export default function HeroSection() {
                 {/* Node 3: productos */}
                 {showProductos && (
                   <motion.div 
+                    key="node-productos"
                     initial={{ opacity: 0, scale: 0.8, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.8, y: -10 }}
                     className="absolute bottom-32 left-16 bg-white border border-slate-300 rounded-xl w-48 shadow-lg overflow-hidden z-10"
                   >
                     <div className="bg-[#FFF9C4] px-3 py-2 border-b border-slate-300 flex items-center gap-2">
@@ -315,8 +427,10 @@ export default function HeroSection() {
                 {/* Node 4: categorias */}
                 {showCategorias && (
                   <motion.div 
+                    key="node-categorias"
                     initial={{ opacity: 0, scale: 0.8, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.8, y: -10 }}
                     className="absolute bottom-4 left-4 bg-white border border-slate-300 rounded-xl w-44 shadow-lg overflow-hidden z-10"
                   >
                     <div className="bg-[#FFF9C4] px-3 py-2 border-b border-slate-300 flex items-center gap-2">

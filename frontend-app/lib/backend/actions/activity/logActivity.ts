@@ -62,15 +62,15 @@ export async function getActivityHistory(
       return []
     }
 
-    return (data || []).map((item: any) => ({
-      id: item.id,
+    return (data || []).map((item: Record<string, unknown>) => ({
+      id: item.id as string,
       action: item.action as ActivityAction,
-      projectId: item.project_id,
-      projectName: item.projects?.name,
+      projectId: item.project_id as string,
+      projectName: (item.projects as { name?: string })?.name,
       metadata: item.metadata as Record<string, unknown>,
-      createdAt: item.created_at
+      createdAt: item.created_at as string
     }))
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error al obtener historial:', error)
     return []
   }
