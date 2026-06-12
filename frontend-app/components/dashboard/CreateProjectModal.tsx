@@ -68,20 +68,38 @@ export function CreateProjectModal({ open, onOpenChange }: CreateProjectModalPro
       setError(result.error)
       setIsPending(false)
     } else {
+      const projectId = String(result.id)
       toast.success('Proyecto creado')
-      
+
+      let hasDiagram = false
+
       // If tables are selected, generate the diagram immediately
       if (selectedTables.length > 0 && activeConnection) {
         toast.info('Generando diagrama...')
         try {
-          await diagramsAPI.generate(result.id, {
+          await diagramsAPI.generate(projectId, {
             connection: activeConnection,
             selected_tables: selectedTables,
             name: name
           })
+          hasDiagram = true
           toast.success('Diagrama generado')
         } catch (err) {
-          toast.error('Error generando el diagrama')
+          toast.warning('No se pudo generar desde la base de datos. Se abrirá un canvas vacío.')
+        }
+      }
+
+      if (!hasDiagram) {
+        try {
+          await diagramsAPI.create({
+            project_id: Number(projectId),
+            name: 'Diagrama Principal',
+            schema_json: JSON.stringify({ nodes: [], edges: [] }),
+            sql_content: '',
+            active_dialect: 'postgresql',
+          })
+        } catch (err) {
+          console.warn('No se pudo crear el diagrama base; el editor usará un canvas temporal.', err)
         }
       }
       
@@ -92,7 +110,7 @@ export function CreateProjectModal({ open, onOpenChange }: CreateProjectModalPro
       setSelectedTables([])
       
       // Navigate directly to the editor
-      router.push(`/editor?projectId=${result.id}`)
+      router.push(`/editor?projectId=${projectId}`)
     }
   }
 

@@ -8,6 +8,7 @@ import { AIConfigPanel } from '@/components/analyzer/AIConfigPanel';
 import { Activity } from 'lucide-react';
 import { analyzerAPI } from '@/lib/api/client';
 import { useConnectionStore } from '@/lib/store/useConnectionStore';
+import { toast } from 'sonner';
 
 export default function AnalyzerPage() {
   const { activeConnection } = useConnectionStore();
@@ -22,6 +23,10 @@ export default function AnalyzerPage() {
   const [aiConfig, setAiConfig] = useState<any>(null);
 
   const handleAnalyze = async () => {
+    if (!activeConnection) {
+      toast.error('No hay conexión activa a la base de datos.');
+      return;
+    }
     setIsAnalyzing(true);
     try {
       const result = await analyzerAPI.explain({
@@ -48,30 +53,32 @@ export default function AnalyzerPage() {
   };
 
   const handleAnalyzeWithAI = async () => {
+    if (!activeConnection) {
+      toast.error('No hay conexión activa a la base de datos.');
+      return;
+    }
+
+    if (!aiConfig?.apiKey?.trim()) {
+      toast.error('Configura una API key antes de usar el análisis con IA.');
+      return;
+    }
+
     setIsAnalyzingAI(true);
     try {
       const result = await analyzerAPI.aiAnalyze({
-        ai_config: aiConfig || { provider: 'openai', model: 'gpt-4o' },
+        ai_config: aiConfig,
         plan_json: analysisResults,
         query,
-        engine: activeConnection?.engine || 'postgresql'
+        engine: activeConnection.engine
       });
       setAiAnalysis(result);
     } catch (error) {
-      console.warn("Backend falló. Usando MOCK DATA para IA.");
-      setTimeout(() => {
-        setAiAnalysis({
-          summary: "La consulta actual no está optimizada para grandes volúmenes de datos porque requiere leer secuencialmente toda la tabla 'users'.",
-          recommendations: [
-            "Crear un índice B-Tree en la columna 'created_at'.",
-            "Considerar seleccionar columnas específicas en lugar de usar SELECT *."
-          ]
-        });
-        setIsAnalyzingAI(false);
-      }, 1500);
-      return;
+      console.warn("No se pudo completar el análisis con IA.", error);
+      setAiAnalysis(null);
+      toast.error('No se pudo completar el análisis con IA. Verifica tu API key o el backend.');
+    } finally {
+      setIsAnalyzingAI(false);
     }
-    setIsAnalyzingAI(false);
   };
 
   return (

@@ -128,7 +128,10 @@ export function DiffViewerModal({ open, onClose, projectId, initialVersionId }: 
         return
       }
 
-      const nextVersions = result.data ?? []
+      const nextVersions = (result.data ?? []).map((version) => ({
+        ...version,
+        createdAt: version.createdAt ? new Date(version.createdAt) : null,
+      }))
       setVersions(nextVersions)
       const selectedA = initialVersionId || nextVersions[1]?.id || nextVersions[0]?.id || ''
       const selectedB = nextVersions.find((version) => version.id !== selectedA)?.id || selectedA
@@ -149,11 +152,12 @@ export function DiffViewerModal({ open, onClose, projectId, initialVersionId }: 
     ;[versionA, versionB].filter(Boolean).forEach((versionId) => {
       if (details[versionId]) return
       getVersionDetailAction(versionId).then((result) => {
-        if (result.error || !result.data) {
+        const versionDetail = result.data
+        if (result.error || !versionDetail) {
           toast.error(result.error ?? 'No se pudo cargar la version')
           return
         }
-        setDetails((current) => ({ ...current, [versionId]: result.data }))
+        setDetails((current) => ({ ...current, [versionId]: versionDetail }))
       })
     })
   }, [details, open, projectId, versionA, versionB])

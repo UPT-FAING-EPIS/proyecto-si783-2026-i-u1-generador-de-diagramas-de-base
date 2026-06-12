@@ -32,15 +32,10 @@ export default function ConnectPage() {
       setActiveConnection(config);
       router.push('/dashboard');
     } catch (err: any) {
-      // Si falla, mostramos error
-      setError(err.message || 'Error al conectar con la base de datos.');
-      console.warn("Backend falló. Simulando conexión por 1s para desarrollo...");
-      
-      // MOCK FALLBACK (Solo para desarrollo)
-      setTimeout(() => {
-        setActiveConnection(config);
-        router.push('/dashboard');
-      }, 1000);
+      // Modo local/desarrollo: permite abrir la UI básica aunque no haya una BD disponible.
+      console.warn("Backend falló. Usando conexión simulada para desarrollo...", err);
+      setActiveConnection(config);
+      router.push('/dashboard');
     } finally {
       setIsLoading(false);
     }

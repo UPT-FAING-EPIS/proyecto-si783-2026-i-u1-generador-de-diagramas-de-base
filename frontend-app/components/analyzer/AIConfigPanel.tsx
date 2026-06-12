@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Bot, Settings2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface AIConfigPanelProps {
   onSaveConfig: (config: any) => void;
@@ -12,11 +13,30 @@ interface AIConfigPanelProps {
 
 export function AIConfigPanel({ onSaveConfig, onAnalyzeWithAI, isAnalyzingAI, disabled }: AIConfigPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isConfigured, setIsConfigured] = useState(false);
   const [config, setConfig] = useState({
     provider: 'openai',
     apiKey: '',
     model: 'gpt-4o'
   });
+
+  const hasApiKey = config.apiKey.trim().length > 0;
+
+  function handleSaveConfig() {
+    if (!hasApiKey) {
+      setIsConfigured(false);
+      toast.error('Agrega una API key para habilitar el análisis con IA.');
+      return;
+    }
+
+    onSaveConfig({
+      ...config,
+      apiKey: config.apiKey.trim(),
+      model: config.model.trim() || 'gpt-4o',
+    });
+    setIsConfigured(true);
+    toast.success('Configuración de IA guardada.');
+  }
 
   return (
     <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
@@ -37,7 +57,10 @@ export function AIConfigPanel({ onSaveConfig, onAnalyzeWithAI, isAnalyzingAI, di
             <label className="block text-xs font-medium text-gray-400 mb-1">Proveedor</label>
             <select 
               value={config.provider}
-              onChange={(e) => setConfig({...config, provider: e.target.value})}
+              onChange={(e) => {
+                setConfig({...config, provider: e.target.value});
+                setIsConfigured(false);
+              }}
               className="w-full bg-gray-950 border border-gray-700 rounded px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none"
             >
               <option value="openai">OpenAI</option>
@@ -52,7 +75,10 @@ export function AIConfigPanel({ onSaveConfig, onAnalyzeWithAI, isAnalyzingAI, di
             <input 
               type="password"
               value={config.apiKey}
-              onChange={(e) => setConfig({...config, apiKey: e.target.value})}
+              onChange={(e) => {
+                setConfig({...config, apiKey: e.target.value});
+                setIsConfigured(false);
+              }}
               className="w-full bg-gray-950 border border-gray-700 rounded px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none"
               placeholder="sk-..."
             />
@@ -63,14 +89,17 @@ export function AIConfigPanel({ onSaveConfig, onAnalyzeWithAI, isAnalyzingAI, di
             <input 
               type="text"
               value={config.model}
-              onChange={(e) => setConfig({...config, model: e.target.value})}
+              onChange={(e) => {
+                setConfig({...config, model: e.target.value});
+                setIsConfigured(false);
+              }}
               className="w-full bg-gray-950 border border-gray-700 rounded px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none"
               placeholder="gpt-4o"
             />
           </div>
 
           <button
-            onClick={() => onSaveConfig(config)}
+            onClick={handleSaveConfig}
             className="w-full bg-gray-800 hover:bg-gray-700 text-white py-1.5 rounded text-sm font-medium transition-colors"
           >
             Guardar Configuración
@@ -78,7 +107,8 @@ export function AIConfigPanel({ onSaveConfig, onAnalyzeWithAI, isAnalyzingAI, di
         </div>
       )}
 
-      <div className="p-4 bg-gray-900 border-t border-gray-800">
+      {isConfigured && (
+        <div className="p-4 bg-gray-900 border-t border-gray-800">
         <button 
           onClick={onAnalyzeWithAI}
           disabled={disabled || isAnalyzingAI}
@@ -91,7 +121,8 @@ export function AIConfigPanel({ onSaveConfig, onAnalyzeWithAI, isAnalyzingAI, di
           )}
           Explicar con IA
         </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

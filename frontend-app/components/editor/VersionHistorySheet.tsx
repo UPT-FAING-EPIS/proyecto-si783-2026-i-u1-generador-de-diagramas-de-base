@@ -45,7 +45,10 @@ export function VersionHistorySheet({ projectId, onRestore, onCompare, children 
     if (result.error) {
       toast.error(result.error)
     } else if (result.data) {
-      setVersions(result.data)
+      setVersions(result.data.map((version) => ({
+        ...version,
+        createdAt: version.createdAt ? new Date(version.createdAt) : null,
+      })))
     }
     setLoading(false)
   }, [projectId])

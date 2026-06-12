@@ -8,6 +8,9 @@ node_modules/
 out/
 build/
 dist/
+__pycache__/
+*.py[cod]
+*.db
 
 # Builds y caches
 .turbo/
@@ -47,3 +50,5 @@ pnpm-debug.log*
 .roo
 .trae
 .windsurf
+
+*.db

@@ -13,9 +13,10 @@ export async function saveDiagramAction({
   dialect: string
 }) {
   try {
-    await diagramsAPI.update(projectId, {
+    await diagramsAPI.saveByProject(projectId, {
       schema_json: JSON.stringify(flowJson),
-      name: 'Actualización'
+      sql_content: sqlContent,
+      active_dialect: dialect,
     });
     return { 
       success: true,

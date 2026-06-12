@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 import { SchemaViewer } from '@/components/generator/SchemaViewer';
@@ -24,6 +24,22 @@ export default function NewDiagramPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [diagramName, setDiagramName] = useState('Diagrama Principal');
 
+  const loadSchema = useCallback(async () => {
+    if (!activeConnection) return;
+    setIsLoadingSchema(true);
+    try {
+      const schemaData = await generatorAPI.getSchema(activeConnection);
+      setTables(schemaData.tables.map((table) => ({
+        name: typeof table === 'string' ? table : table.name,
+        rowCount: 100,
+      })));
+    } catch {
+      toast.error("Error al cargar el esquema de la base de datos.");
+    } finally {
+      setIsLoadingSchema(false);
+    }
+  }, [activeConnection]);
+
   useEffect(() => {
     if (!projectId) {
       router.push('/dashboard');
@@ -36,21 +52,7 @@ export default function NewDiagramPage() {
       toast.error('No hay conexión activa a la base de datos.');
       router.push('/connect');
     }
-  }, [activeConnection, projectId]);
-
-  const loadSchema = async () => {
-    setIsLoadingSchema(true);
-    try {
-      const schemaData = await generatorAPI.getSchema(activeConnection);
-      if ((schemaData as any).tables) {
-        setTables((schemaData as any).tables.map((t: any) => ({ name: t.name, rowCount: 100 })));
-      }
-    } catch (error) {
-      toast.error("Error al cargar el esquema de la base de datos.");
-    } finally {
-      setIsLoadingSchema(false);
-    }
-  };
+  }, [activeConnection, loadSchema, projectId, router]);
 
   const handleToggleTable = (tableName: string) => {
     setSelectedTables(prev => 
@@ -64,6 +66,12 @@ export default function NewDiagramPage() {
   const handleDeselectAll = () => setSelectedTables([]);
 
   const handleGenerate = async () => {
+    if (!activeConnection) {
+      toast.error('No hay conexión activa a la base de datos.');
+      router.push('/connect');
+      return;
+    }
+
     if (selectedTables.length === 0) {
       toast.error('Selecciona al menos una tabla');
       return;

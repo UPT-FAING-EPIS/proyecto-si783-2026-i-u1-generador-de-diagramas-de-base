@@ -12,9 +12,25 @@ export function ClientInitProvider({ children }: { children: React.ReactNode }) 
   const { activeConnection } = useConnectionStore();
 
   useEffect(() => {
-    initApiClient().then(() => {
-      setIsReady(true);
-    });
+    let cancelled = false;
+    const timeout = window.setTimeout(() => {
+      if (!cancelled) setIsReady(true);
+    }, 3000);
+
+    initApiClient()
+      .catch(() => {
+        // Browser development keeps using localhost:8000.
+      })
+      .finally(() => {
+        if (cancelled) return;
+        window.clearTimeout(timeout);
+        setIsReady(true);
+      });
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
   }, []);
 
   useEffect(() => {

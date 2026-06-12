@@ -18,16 +18,16 @@ export interface ProjectListItem {
 export async function getProjectsByUser(): Promise<ProjectListItem[]> {
   try {
     const projects = await projectsAPI.list();
-    return projects.map((p: any) => ({
+    return projects.map((p) => ({
       project: {
         id: String(p.id),
         name: p.name,
         description: p.description,
         ownerId: 'local-user',
         tags: [],
-        createdAt: new Date(p.created_at || new Date()),
-        updatedAt: new Date(p.created_at || new Date()),
-        deleted_at: null
+        createdAt: new Date(p.created_at),
+        updatedAt: new Date(p.updated_at),
+        deleted_at: p.deleted_at ? new Date(p.deleted_at) : null,
       },
       role: 'owner',
       members: [{ id: 'local-user', name: 'Usuario Local' }]

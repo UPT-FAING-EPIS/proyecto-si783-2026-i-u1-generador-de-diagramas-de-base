@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 import { SchemaViewer } from '@/components/generator/SchemaViewer';
 import { DataPreview } from '@/components/generator/DataPreview';
@@ -8,6 +8,7 @@ import { ExportPanel } from '@/components/generator/ExportPanel';
 import { Database } from 'lucide-react';
 import { generatorAPI } from '@/lib/api/client';
 import { useConnectionStore } from '@/lib/store/useConnectionStore';
+import { toast } from 'sonner';
 
 export default function GeneratorPage() {
   const { activeConnection } = useConnectionStore();
@@ -16,26 +17,22 @@ export default function GeneratorPage() {
   const [selectedTables, setSelectedTables] = useState<string[]>([]);
   
   const [isPreviewing, setIsPreviewing] = useState(false);
-  const [previewData, setPreviewData] = useState<any>(null);
+  const [previewData, setPreviewData] = useState<Record<string, unknown> | null>(null);
   
   const [isExporting, setIsExporting] = useState(false);
   const [isInserting, setIsInserting] = useState(false);
   const [isLoadingSchema, setIsLoadingSchema] = useState(false);
 
-  useEffect(() => {
-    if (activeConnection) {
-      loadSchema();
-    }
-  }, [activeConnection]);
-
-  const loadSchema = async () => {
+  const loadSchema = useCallback(async () => {
+    if (!activeConnection) return;
     setIsLoadingSchema(true);
     try {
       const schemaData = await generatorAPI.getSchema(activeConnection);
-      if ((schemaData as any).tables) {
-        setTables((schemaData as any).tables.map((t: any) => ({ name: typeof t === 'string' ? t : t.name, rowCount: 100 })));
-      }
-    } catch (error) {
+      setTables(schemaData.tables.map((table) => ({
+        name: typeof table === 'string' ? table : table.name,
+        rowCount: 100,
+      })));
+    } catch {
       console.warn("Backend falló. Usando MOCK DATA para el UI.");
       setTimeout(() => {
         setTables([
@@ -50,7 +47,13 @@ export default function GeneratorPage() {
       return;
     }
     setIsLoadingSchema(false);
-  };
+  }, [activeConnection]);
+
+  useEffect(() => {
+    if (activeConnection) {
+      void loadSchema();
+    }
+  }, [activeConnection, loadSchema]);
 
   const handleToggleTable = (tableName: string) => {
     setSelectedTables(prev => 
@@ -68,6 +71,11 @@ export default function GeneratorPage() {
   };
 
   const handleGeneratePreview = async () => {
+    if (!activeConnection) {
+      toast.error('No hay conexión activa a la base de datos.');
+      return;
+    }
+
     setIsPreviewing(true);
     try {
       // Create schema object and table configs
@@ -106,6 +114,11 @@ export default function GeneratorPage() {
   };
 
   const handleExport = async (format: string) => {
+    if (!activeConnection) {
+      toast.error('No hay conexión activa a la base de datos.');
+      return;
+    }
+
     setIsExporting(true);
     try {
       const fullSchema = await generatorAPI.getSchema(activeConnection);
@@ -129,6 +142,11 @@ export default function GeneratorPage() {
   };
 
   const handleInsertDirectly = async () => {
+    if (!activeConnection) {
+      toast.error('No hay conexión activa a la base de datos.');
+      return;
+    }
+
     setIsInserting(true);
     try {
       const fullSchema = await generatorAPI.getSchema(activeConnection);

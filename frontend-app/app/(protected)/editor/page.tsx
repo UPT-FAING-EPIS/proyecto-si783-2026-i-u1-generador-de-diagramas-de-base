@@ -39,7 +39,21 @@ function EditorPageContent() {
   }
 
   if (!diagramData) {
-    return null
+    return (
+      <div className="h-dvh flex flex-col items-center justify-center gap-3 bg-[#07101F] px-6 text-center text-white">
+        <p className="text-lg font-semibold">No se pudo cargar el editor</p>
+        <p className="max-w-md text-sm text-[#94A3B8]">
+          El proyecto no tiene un diagrama disponible. Vuelve al dashboard y crea uno nuevo.
+        </p>
+        <button
+          type="button"
+          onClick={() => router.push('/dashboard')}
+          className="rounded-lg bg-[#1A6CF6] px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          Volver al dashboard
+        </button>
+      </div>
+    )
   }
 
   const savedFlow = toFlowJson(diagramData.flowJson)

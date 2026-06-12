@@ -1,7 +1,6 @@
 'use client';
 
 import { Activity, AlertTriangle, CheckCircle2, ChevronRight, Zap } from 'lucide-react';
-import { ScoreIndicator } from './ScoreIndicator';
 
 interface AnalysisResultsProps {
   results: any | null;
@@ -20,7 +19,6 @@ export function AnalysisResults({ results, aiAnalysis }: AnalysisResultsProps) {
   }
 
   // Mapear los datos reales del backend o usar fallback si no existen
-  const score = results.score || 85;
   const executionTimeMs = results.execution_time_ms || results.executionTimeMs || 0;
   const warnings = results.warnings || [];
   const planSummary = results.plan_summary || results.planSummary || "Plan de ejecución analizado.";
@@ -32,14 +30,10 @@ export function AnalysisResults({ results, aiAnalysis }: AnalysisResultsProps) {
         <h2 className="text-lg font-semibold text-white">Resultados del Análisis</h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ScoreIndicator score={score} />
-        
-        <div className="bg-gray-950 rounded-xl border border-gray-800 p-4 flex flex-col justify-center">
-          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Tiempo de Ejecución</span>
-          <div className="text-3xl font-bold text-white flex items-end gap-2">
-            {executionTimeMs} <span className="text-lg text-gray-400 mb-1">ms</span>
-          </div>
+      <div className="bg-gray-950 rounded-xl border border-gray-800 p-4 flex flex-col justify-center">
+        <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Tiempo de Ejecución</span>
+        <div className="text-3xl font-bold text-white flex items-end gap-2">
+          {executionTimeMs} <span className="text-lg text-gray-400 mb-1">ms</span>
         </div>
       </div>
 
