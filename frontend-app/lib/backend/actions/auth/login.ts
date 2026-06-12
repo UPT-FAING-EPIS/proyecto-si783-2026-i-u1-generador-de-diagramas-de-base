@@ -20,10 +20,12 @@ export async function loginAction(formData: FormData) {
   const password = formData.get('password') as string
   const next = formData.get('next') as string | null
 
+
   const result = LoginSchema.safeParse({ email, password })
   if (!result.success) {
     return { error: result.error.issues[0].message }
   }
+
 
   const supabase = await createClient()
 

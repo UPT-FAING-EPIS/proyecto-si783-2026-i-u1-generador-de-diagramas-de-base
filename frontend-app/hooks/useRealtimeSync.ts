@@ -15,7 +15,7 @@ export function useRealtimeSync(projectId: string, userId: string) {
     channelRef.current = channel
 
     channel
-      .on('broadcast', { event: 'node_move' }, ({ payload }) => {
+      .on('broadcast', { event: 'node_move' }, ({ payload }: { payload: any }) => {
         if (payload.senderId === userId) return
 
         const localNodes = useEditorStore.getState().nodes
@@ -26,7 +26,7 @@ export function useRealtimeSync(projectId: string, userId: string) {
 
         useEditorStore.getState().setNodesAndEdges(updatedNodes, localEdges)
       })
-      .on('broadcast', { event: 'sql_change' }, ({ payload }) => {
+      .on('broadcast', { event: 'sql_change' }, ({ payload }: { payload: any }) => {
         if (payload.senderId === userId) return
 
         const localNodes = useEditorStore.getState().nodes

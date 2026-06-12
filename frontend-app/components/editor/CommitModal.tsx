@@ -53,13 +53,13 @@ export function CommitModal({ projectId }: CommitModalProps) {
         <Button 
           variant="outline" 
           size="sm" 
-          className="bg-[#111827] border-[#1E2A45] text-[#E2E8F0] hover:bg-[#1E2A45] hover:text-white"
+          className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900"
         >
-          <GitCommit className="w-4 h-4 mr-2 text-[#00D4FF]" />
+          <GitCommit className="w-4 h-4 mr-2 text-[#1A6CF6]" />
           Commit
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-[#111827] border-[#1E2A45] text-white sm:max-w-[425px]">
+      <DialogContent className="bg-white border-slate-200 text-slate-900 sm:max-w-[425px]">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: -8 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -68,7 +68,7 @@ export function CommitModal({ projectId }: CommitModalProps) {
         >
           <DialogHeader>
             <DialogTitle>Guardar Versión (Commit)</DialogTitle>
-            <DialogDescription className="text-[#94A3B8]">
+            <DialogDescription className="text-slate-500">
               Guarda una instantánea del esquema y canvas actual para poder restaurarla en el futuro.
             </DialogDescription>
           </DialogHeader>
@@ -81,7 +81,7 @@ export function CommitModal({ projectId }: CommitModalProps) {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   maxLength={100}
-                  className="bg-[#0A0F1E] border-[#1E2A45] focus-visible:ring-[#1A6CF6]"
+                  className="bg-white border-slate-200 text-slate-900 focus-visible:ring-[#1A6CF6]"
                   disabled={loading}
                 />
               </div>

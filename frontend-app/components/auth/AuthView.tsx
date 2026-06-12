@@ -211,6 +211,7 @@ export function AuthView({ defaultTab = 'login' }: { defaultTab?: 'login' | 'reg
                         name="email" 
                         type="email" 
                         required 
+                        defaultValue="test@fluxsql.com"
                         placeholder="ejemplo@correo.com"
                         className="pl-10 bg-white border-slate-200 focus-visible:ring-[#1A6CF6] text-slate-900 h-12 rounded-xl shadow-sm placeholder:text-slate-400"
                         disabled={isPending}
@@ -227,6 +228,7 @@ export function AuthView({ defaultTab = 'login' }: { defaultTab?: 'login' | 'reg
                         name="password" 
                         type={showPassword ? 'text' : 'password'} 
                         required 
+                        defaultValue="123456"
                         placeholder="••••••••••••"
                         className="pl-10 pr-10 bg-white border-slate-200 focus-visible:ring-[#1A6CF6] text-slate-900 h-12 rounded-xl shadow-sm placeholder:text-slate-400"
                         disabled={isPending}

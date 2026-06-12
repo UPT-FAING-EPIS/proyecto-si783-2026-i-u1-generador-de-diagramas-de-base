@@ -20,22 +20,6 @@ export default async function EditorPage({ params }: EditorPageProps) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // MOCK PARA MODO DESARROLLO / DISEÑO (Si no hay usuario logueado en localhost)
-  if (!user && process.env.NODE_ENV === 'development') {
-    return (
-      <EditorLayout
-        projectName="Proyecto de Diseño"
-        projectId={projectId}
-        initialSQL="CREATE TABLE usuarios (id INT PRIMARY KEY, nombre VARCHAR);"
-        initialNodes={[]}
-        initialEdges={[]}
-        dialect="postgresql"
-        currentUser={{ id: 'dev-user', name: 'Diseñador UI' }}
-        initialIsPublic={false}
-        initialShareAccess="view"
-      />
-    )
-  }
 
   if (!user) {
     redirect('/login')

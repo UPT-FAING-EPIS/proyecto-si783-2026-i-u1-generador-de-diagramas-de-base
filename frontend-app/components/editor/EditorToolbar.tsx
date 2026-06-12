@@ -45,7 +45,7 @@ function ToolbarButton({
   shortcut?: string
 }) {
   const colorMap = {
-    default: 'text-[#6B7280] hover:text-white hover:bg-[#1E2A45]',
+    default: 'text-slate-500 hover:text-slate-900 hover:bg-slate-100',
     primary: 'text-[#1A6CF6] hover:text-blue-400 hover:bg-[#1A6CF6]/10',
     danger:  'text-[#EF4444] hover:text-red-400 hover:bg-[#EF4444]/10',
   }
@@ -140,18 +140,18 @@ export function EditorToolbar({ projectId, projectName, dialect = 'postgresql', 
 
   return (
     <TooltipProvider delayDuration={200}>
-      <header className="shrink-0 border-b border-[#1E2A45] bg-[#111827] h-12 flex items-center px-4 gap-4">
-        <a href="/dashboard" className="text-[#94A3B8] hover:text-white transition-colors text-sm">
+      <header className="shrink-0 border-b border-slate-200 bg-white h-12 flex items-center px-4 gap-4">
+        <a href="/dashboard" className="text-slate-500 hover:text-[#1A6CF6] transition-colors text-sm">
           ← Dashboard
         </a>
-        <span className="text-[#1E2A45]">|</span>
-        <h1 className="font-semibold text-[#E2E8F0] truncate">{projectName}</h1>
-        <span className="ml-auto text-xs text-[#94A3B8] font-mono hidden md:block">{projectId}</span>
+        <span className="text-slate-200">|</span>
+        <h1 className="font-semibold text-slate-900 truncate">{projectName}</h1>
+        <span className="ml-auto text-xs text-slate-400 font-mono hidden md:block">{projectId}</span>
         
-        <span className="hidden sm:flex items-center gap-1 text-[#6B7280] text-xs ml-4">
-          <kbd className="px-1.5 py-0.5 bg-[#1E2A45] rounded text-[10px]">Ctrl</kbd>
+        <span className="hidden sm:flex items-center gap-1 text-slate-400 text-xs ml-4">
+          <kbd className="px-1.5 py-0.5 bg-slate-100 text-slate-500 border border-slate-200 rounded text-[10px]">Ctrl</kbd>
           <span>+</span>
-          <kbd className="px-1.5 py-0.5 bg-[#1E2A45] rounded text-[10px]">K</kbd>
+          <kbd className="px-1.5 py-0.5 bg-slate-100 text-slate-500 border border-slate-200 rounded text-[10px]">K</kbd>
         </span>
         
         <div className="flex items-center gap-2 ml-4">
