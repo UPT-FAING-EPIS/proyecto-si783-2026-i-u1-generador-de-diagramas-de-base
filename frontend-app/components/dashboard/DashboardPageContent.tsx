@@ -24,6 +24,10 @@ interface DashboardPageContentProps {
   userEmail?: string
   userAvatarUrl?: string | null
   projects: ProjectItem[]
+  loading: boolean
+  error: string | null
+  onRetry: () => void
+  onProjectsChanged: () => void
   currentUserId: string
   currentUser?: { id: string; name: string } | null
 }
@@ -33,6 +37,10 @@ export function DashboardPageContent({
   userEmail,
   userAvatarUrl,
   projects,
+  loading,
+  error,
+  onRetry,
+  onProjectsChanged,
   currentUserId,
   currentUser,
 }: DashboardPageContentProps) {
@@ -58,6 +66,10 @@ export function DashboardPageContent({
           <div className="container mx-auto px-4 py-10 max-w-6xl">
             <DashboardClient
               projects={projects}
+              loading={loading}
+              error={error}
+              onRetry={onRetry}
+              onProjectsChanged={onProjectsChanged}
               currentUserId={currentUserId}
               currentUser={currentUser}
               activeSection={activeSection}

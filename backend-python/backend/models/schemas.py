@@ -89,6 +89,23 @@ class DatabaseSchema(BaseModel):
     tables: List[TableSchema]
 
 
+class TableRowsRequest(BaseModel):
+    connection: ConexionRequest
+    table_name: str = Field(..., min_length=1)
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=25, ge=1, le=100)
+
+
+class TableRowsResponse(BaseModel):
+    table_name: str
+    columns: List[str]
+    rows: List[List[Any]]
+    page: int
+    page_size: int
+    total_rows: int
+    total_pages: int
+
+
 # ─────────────────────────────────────────────────────────────
 # GENERACIÓN DE DATOS
 # ─────────────────────────────────────────────────────────────

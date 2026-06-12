@@ -21,9 +21,10 @@ interface ProjectGridProps {
   currentUserId: string
   currentUser?: { id: string; name: string } | null
   onCreateProject?: () => void
+  onProjectsChanged?: () => void
 }
 
-export function ProjectGrid({ projects, currentUserId, currentUser }: ProjectGridProps) {
+export function ProjectGrid({ projects, currentUserId, currentUser, onProjectsChanged }: ProjectGridProps) {
   if (projects.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -47,6 +48,7 @@ export function ProjectGrid({ projects, currentUserId, currentUser }: ProjectGri
             members={members ?? []}
             tags={project.tags ?? []}
             currentUser={currentUser}
+            onProjectsChanged={onProjectsChanged}
           />
         ))}
 

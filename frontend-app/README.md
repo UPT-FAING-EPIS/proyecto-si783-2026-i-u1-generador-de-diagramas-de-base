@@ -1,36 +1,32 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FluxSQL Desktop
 
-## Getting Started
+FluxSQL Desktop usa Next.js como frontend exportado estaticamente y Tauri como contenedor nativo.
 
-First, run the development server:
+## Desarrollo
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```powershell
+pnpm install
+pnpm desktop:dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Durante desarrollo, Next.js usa `http://localhost:3000` exclusivamente para hot reload. Tauri ejecuta `backend-python/main.py` con el Python local y administra su ciclo de vida.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Instalador Windows
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```powershell
+pnpm desktop:build
+```
 
-## Learn More
+El comando reconstruye el sidecar PyInstaller, exporta Next.js a `out/` y genera el instalador NSIS `.exe`.
 
-To learn more about Next.js, take a look at the following resources:
+El instalador final no requiere Node.js, pnpm ni Python y no levanta un servidor Next.js. Los datos locales se guardan en AppData bajo `com.fluxsql.desktop`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Pruebas manuales
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Ejecuta `pnpm desktop:dev`, conecta una base de datos y cierra la ventana varias veces.
+2. Confirma en el Administrador de tareas que no queden procesos `python`, `cdcart-backend` o `fluxsql-desktop` iniciados por FluxSQL.
+3. Ejecuta `pnpm desktop:build`.
+4. Instala `src-tauri/target/release/bundle/nsis/FluxSQL Desktop_0.1.0_x64-setup.exe`.
+5. Abre la app instalada y confirma que no necesita Node.js, pnpm, Python ni `localhost:3000`.
+6. Verifica conexión, generación y refresco del diagrama usando la base local `cienciasnet`.
+7. Confirma que los datos sobreviven al reinicio y están bajo `%APPDATA%\com.fluxsql.desktop`.

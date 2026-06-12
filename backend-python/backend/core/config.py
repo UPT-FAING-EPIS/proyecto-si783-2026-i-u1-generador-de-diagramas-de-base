@@ -6,6 +6,7 @@ Lee variables de entorno desde .env automáticamente.
 from pydantic_settings import BaseSettings
 from typing import List
 import os
+from pathlib import Path
 
 
 class Settings(BaseSettings):
@@ -23,10 +24,12 @@ class Settings(BaseSettings):
 
     # ── Archivos temporales ────────────────────────────────────
     TEMP_DIR: str = "./tmp_exports"
+    APP_CONFIG_DIR: str = "./local_config"
+    SECRETS_KEY_PATH: str = "./local_config/secrets.key"
 
     @property
     def DATABASE_URL(self) -> str:
-        return f"sqlite:///{self.DATABASE_PATH}"
+        return f"sqlite:///{Path(self.DATABASE_PATH).resolve().as_posix()}"
 
     @property
     def CORS_ORIGINS(self) -> List[str]:

@@ -23,13 +23,17 @@ interface ProjectItem {
 
 interface DashboardClientProps {
   projects: ProjectItem[]
+  loading: boolean
+  error: string | null
+  onRetry: () => void
+  onProjectsChanged: () => void
   currentUserId: string
   currentUser?: { id: string; name: string } | null
   activeSection: string
   onSectionChange: (section: string) => void
 }
 
-export function DashboardClient({ projects, currentUserId, currentUser, activeSection }: DashboardClientProps) {
+export function DashboardClient({ projects, loading, error, onRetry, onProjectsChanged, currentUserId, currentUser, activeSection }: DashboardClientProps) {
   const [query, setQuery] = useState('')
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
@@ -94,7 +98,7 @@ export function DashboardClient({ projects, currentUserId, currentUser, activeSe
           Crear Proyecto
         </button>
       </div>
-      <CreateProjectModal open={isCreateProjectOpen} onOpenChange={setIsCreateProjectOpen} />
+      <CreateProjectModal open={isCreateProjectOpen} onOpenChange={setIsCreateProjectOpen} onCreated={onProjectsChanged} />
 
       {/* Toolbar: búsqueda + toggle */}
       <div className="flex items-center gap-3 mb-6">
@@ -158,7 +162,14 @@ export function DashboardClient({ projects, currentUserId, currentUser, activeSe
       </div>
 
       {/* Contenido */}
-      {activeSection === 'historial' ? (
+      {loading ? (
+        <div className="py-24 text-center text-sm text-[#94A3B8]">Cargando proyectos...</div>
+      ) : error ? (
+        <div className="flex flex-col items-center gap-3 py-24 text-center">
+          <p className="text-sm text-red-300">{error}</p>
+          <button onClick={onRetry} className="rounded-lg bg-[#1A6CF6] px-4 py-2 text-sm text-white">Reintentar</button>
+        </div>
+      ) : activeSection === 'historial' ? (
         <HistorialSection />
       ) : filtered.length === 0 && query ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -190,6 +201,7 @@ export function DashboardClient({ projects, currentUserId, currentUser, activeSe
           projects={filtered}
           currentUserId={currentUserId}
           currentUser={currentUser}
+          onProjectsChanged={onProjectsChanged}
           onCreateProject={() => document.getElementById('create-project-btn')?.click()}
         />
       ) : (

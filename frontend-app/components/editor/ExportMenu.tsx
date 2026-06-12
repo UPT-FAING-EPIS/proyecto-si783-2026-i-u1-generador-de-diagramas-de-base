@@ -8,6 +8,7 @@ import { useEditorStore } from "@/store/useEditorStore"
 import { serializeAllDialects, serializeSchema, type EditorDialect } from "@/lib/editor-schema"
 import { toast } from "sonner"
 import type { FlowNode } from "@/lib/parsers"
+import { dataUrlToBytes, dataUrlToText, saveExportFile } from "@/lib/export-file"
 
 interface ExportMenuProps {
   projectName: string
@@ -17,16 +18,6 @@ function isMermaidNode(node: unknown): node is FlowNode {
   if (!node || typeof node !== 'object') return false
   const candidate = node as Partial<FlowNode>
   return typeof candidate.id === 'string' && candidate.data !== undefined && typeof candidate.data.tableName === 'string' && Array.isArray(candidate.data.columns)
-}
-
-function downloadText(content: string, fileName: string, type = 'text/plain') {
-  const blob = new Blob([content], { type })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = fileName
-  a.click()
-  URL.revokeObjectURL(url)
 }
 
 export function ExportMenu({ projectName }: ExportMenuProps) {
@@ -44,7 +35,7 @@ export function ExportMenu({ projectName }: ExportMenuProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const getCanvasNode = (): HTMLElement | null => document.querySelector('.react-flow__viewport') as HTMLElement | null
+  const getCanvasNode = (): HTMLElement | null => document.querySelector('.react-flow__renderer') as HTMLElement | null
 
   async function handleExportImage(kind: 'png' | 'svg') {
     setOpen(false)
@@ -59,6 +50,8 @@ export function ExportMenu({ projectName }: ExportMenuProps) {
     }
 
     try {
+      useEditorStore.getState().setHoveredNodeId(null)
+      await new Promise((resolve) => window.requestAnimationFrame(resolve))
       const bounds = getNodesBounds(nodes)
       const padding = 96
       const width = Math.max(900, Math.ceil(bounds.width + padding * 2))
@@ -82,10 +75,16 @@ export function ExportMenu({ projectName }: ExportMenuProps) {
         ? await toPng(canvas, { ...options, pixelRatio: 2 })
         : await toSvg(canvas, options)
 
-      const a = document.createElement('a')
-      a.href = dataUrl
-      a.download = `${safeName}-diagrama.${kind}`
-      a.click()
+      const content = kind === 'png'
+        ? dataUrlToBytes(dataUrl)
+        : dataUrlToText(dataUrl)
+      const saved = await saveExportFile(
+        content,
+        `${safeName}-diagrama.${kind}`,
+        kind === 'png' ? 'image/png' : 'image/svg+xml',
+        kind,
+      )
+      if (!saved) return
       toast.success(`Diagrama exportado como ${kind.toUpperCase()}`)
     } catch (error) {
       console.error(error)
@@ -101,22 +100,31 @@ export function ExportMenu({ projectName }: ExportMenuProps) {
     return true
   }
 
-  function handleExportSql(dialect: EditorDialect | 'all') {
+  async function handleExportSql(dialect: EditorDialect | 'all') {
     setOpen(false)
     const { nodes } = useEditorStore.getState()
     if (dialect === 'all') {
       const { edges } = useEditorStore.getState()
       const all = serializeAllDialects(nodes, edges)
-      downloadText(
+      const saved = await saveExportFile(
         Object.entries(all).map(([name, content]) => `-- ${name.toUpperCase()}\n${content}`).join('\n\n'),
-        `${safeName}-sql-todos-los-dialectos.sql`
+        `${safeName}-sql-todos-los-dialectos.sql`,
+        'text/sql',
+        'sql',
       )
+      if (!saved) return
       toast.success('SQL exportado para todos los dialectos')
       return
     }
     const extension = dialect === 'json' ? 'json' : 'sql'
     const { edges } = useEditorStore.getState()
-    downloadText(serializeSchema(nodes, dialect, edges), `${safeName}-${dialect}.${extension}`, dialect === 'json' ? 'application/json' : 'text/sql')
+    const saved = await saveExportFile(
+      serializeSchema(nodes, dialect, edges),
+      `${safeName}-${dialect}.${extension}`,
+      dialect === 'json' ? 'application/json' : 'text/sql',
+      extension,
+    )
+    if (!saved) return
     toast.success(`Exportado como ${dialect}`)
   }
 
@@ -154,11 +162,11 @@ export function ExportMenu({ projectName }: ExportMenuProps) {
         <div className="absolute right-0 top-full z-[120] mt-2 w-56 overflow-hidden rounded-xl border border-[#1E2A45] bg-[#111827] shadow-2xl shadow-black/40">
           <MenuButton onClick={() => handleExportImage('png')} disabled={Boolean(exporting)}>{exporting === 'png' ? 'Exportando PNG...' : 'Exportar PNG'}</MenuButton>
           <MenuButton onClick={() => handleExportImage('svg')} disabled={Boolean(exporting)}>{exporting === 'svg' ? 'Exportando SVG...' : 'Exportar SVG'}</MenuButton>
-          <MenuButton onClick={() => handleExportSql('postgresql')}>SQL PostgreSQL</MenuButton>
-          <MenuButton onClick={() => handleExportSql('mysql')}>SQL MySQL</MenuButton>
-          <MenuButton onClick={() => handleExportSql('sqlserver')}>SQL Server</MenuButton>
-          <MenuButton onClick={() => handleExportSql('json')}>JSON</MenuButton>
-          <MenuButton onClick={() => handleExportSql('all')}>Todos los dialectos</MenuButton>
+          <MenuButton onClick={() => void handleExportSql('postgresql')}>SQL PostgreSQL</MenuButton>
+          <MenuButton onClick={() => void handleExportSql('mysql')}>SQL MySQL</MenuButton>
+          <MenuButton onClick={() => void handleExportSql('sqlserver')}>SQL Server</MenuButton>
+          <MenuButton onClick={() => void handleExportSql('json')}>JSON</MenuButton>
+          <MenuButton onClick={() => void handleExportSql('all')}>Todos los dialectos</MenuButton>
           <MenuButton onClick={handleCopyMermaid}>Copiar Mermaid</MenuButton>
         </div>
       )}

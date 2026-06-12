@@ -26,7 +26,7 @@ export async function getProjectsByUser(): Promise<ProjectListItem[]> {
         ownerId: 'local-user',
         tags: [],
         createdAt: new Date(p.created_at),
-        updatedAt: new Date(p.updated_at),
+        updatedAt: new Date(p.updated_at ?? p.created_at),
         deleted_at: p.deleted_at ? new Date(p.deleted_at) : null,
       },
       role: 'owner',
@@ -35,6 +35,6 @@ export async function getProjectsByUser(): Promise<ProjectListItem[]> {
   } catch (error) {
     console.error('Error fetching projects via API:', error);
     // Para modo local sin el backend corriendo, retornar un arreglo vacío en lugar de romper
-    return [];
+    throw error instanceof Error ? error : new Error('No se pudieron cargar los proyectos.');
   }
 }

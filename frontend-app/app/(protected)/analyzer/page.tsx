@@ -58,7 +58,7 @@ export default function AnalyzerPage() {
       return;
     }
 
-    if (!aiConfig?.apiKey?.trim()) {
+    if (!aiConfig?.providerId) {
       toast.error('Configura una API key antes de usar el análisis con IA.');
       return;
     }
@@ -66,7 +66,7 @@ export default function AnalyzerPage() {
     setIsAnalyzingAI(true);
     try {
       const result = await analyzerAPI.aiAnalyze({
-        ai_config: aiConfig,
+        ai_config: { provider_id: aiConfig.providerId },
         plan_json: analysisResults,
         query,
         engine: activeConnection.engine

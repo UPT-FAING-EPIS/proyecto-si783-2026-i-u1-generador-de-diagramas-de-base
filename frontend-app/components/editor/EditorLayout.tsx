@@ -18,6 +18,7 @@ import { getSchemaStats, type EditorDialect } from '@/lib/editor-schema'
 import { toFlowJson } from '@/lib/flow-types'
 import { diagramsAPI } from '@/lib/api/client'
 import { useConnectionStore } from '@/lib/store/useConnectionStore'
+import { useRouter } from 'next/navigation'
 
 interface EditorLayoutProps {
   projectName: string
@@ -47,6 +48,7 @@ function EditorLayoutInner({
   initialIsPublic = false,
   initialShareAccess = 'view',
 }: EditorLayoutProps) {
+  const router = useRouter()
   const { toObject, fitView, setViewport } = useReactFlow()
   const nodes = useEditorStore((state) => state.nodes)
   const edges = useEditorStore((state) => state.edges)
@@ -66,6 +68,8 @@ function EditorLayoutInner({
   const [sqlWidth, setSqlWidth] = useState(450)
   const [inspectorWidth, setInspectorWidth] = useState(320)
   const resizeTarget = useRef<'sql' | 'inspector' | null>(null)
+  const initialized = useRef(false)
+  const saveTimer = useRef<number | null>(null)
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -108,8 +112,28 @@ function EditorLayoutInner({
     setDialect((dialect as EditorDialect) || 'postgresql')
     setSqlValue(initialSQL ?? '')
     setNodesAndEdges(initialNodes, initialEdges)
+    initialized.current = true
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (!initialized.current) return
+    if (saveTimer.current) window.clearTimeout(saveTimer.current)
+    saveTimer.current = window.setTimeout(() => {
+      void saveDiagramAction({ projectId, flowJson: toObject() }).then((result) => {
+        if (!result.error) setSavedLabel('Guardado automaticamente')
+      })
+    }, 900)
+    return () => {
+      if (saveTimer.current) window.clearTimeout(saveTimer.current)
+    }
+  }, [nodes, projectId, toObject])
+
+  async function handleBack() {
+    if (saveTimer.current) window.clearTimeout(saveTimer.current)
+    await handleSave()
+    router.push('/dashboard')
+  }
 
   async function handleSave() {
     setSaving(true)
@@ -238,12 +262,13 @@ function EditorLayoutInner({
 
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <header className="relative z-[100] flex h-14 shrink-0 items-center gap-3 overflow-visible border-b border-[#1E2A45] bg-[#0B1322]/95 px-4 backdrop-blur">
-          <a
-            href="/dashboard"
+          <button
+            type="button"
+            onClick={() => void handleBack()}
             className="rounded-lg p-2 text-[#94A3B8] hover:bg-[#111827] hover:text-white"
           >
             <ArrowLeft size={17} />
-          </a>
+          </button>
 
           <span className="text-sm text-[#94A3B8]">Proyectos</span>
           <span className="text-[#334155]">/</span>
@@ -353,7 +378,7 @@ function EditorLayoutInner({
                 className="flex min-h-0 shrink-0 flex-col overflow-hidden border-l border-[#1E2A45] bg-[#0B1322]"
               >
                 <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-                  <SchemaInspector />
+                  <SchemaInspector projectId={projectId} />
                 </div>
               </div>
             </>

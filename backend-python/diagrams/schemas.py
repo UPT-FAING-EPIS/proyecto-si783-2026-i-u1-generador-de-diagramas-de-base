@@ -1,6 +1,7 @@
 from pydantic import BaseModel
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from datetime import datetime
+from backend.models.schemas import ConexionRequest
 
 class ProjectBase(BaseModel):
     name: str
@@ -16,7 +17,7 @@ class ProjectUpdate(BaseModel):
 class ProjectResponse(ProjectBase):
     id: int
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
     is_public: bool
     share_access: str
@@ -46,7 +47,7 @@ class DiagramResponse(DiagramBase):
     selected_tables_json: str = "[]"
     last_synced_at: Optional[datetime] = None
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -81,3 +82,19 @@ class VersionDetail(VersionSummary):
 class DiagramLayoutUpdate(BaseModel):
     positions: Dict[str, Dict[str, float]]
     viewport: Optional[Dict[str, float]] = None
+
+
+class TableRowsRequest(BaseModel):
+    connection: ConexionRequest
+    page: int = 1
+    page_size: int = 25
+
+
+class TableRowsResponse(BaseModel):
+    table_name: str
+    columns: List[str]
+    rows: List[List[Any]]
+    page: int
+    page_size: int
+    total_rows: int
+    total_pages: int

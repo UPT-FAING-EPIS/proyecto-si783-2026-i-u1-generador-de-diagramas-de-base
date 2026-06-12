@@ -27,6 +27,16 @@ export type RelationshipCardinality = 'many-to-one' | 'one-to-many' | 'one-to-on
 
 export const DEFAULT_TABLE_COLOR = '#1A6CF6'
 
+export type NormalizedRelationship = {
+  sourceTable: string
+  sourceColumn?: string
+  targetTable: string
+  targetColumn?: string
+  sourceCardinality: string
+  targetCardinality: string
+  label: string
+}
+
 export function isEditorNode(node: Node): node is EditorNode {
   return (
     node.type === 'tableNode' &&
@@ -95,6 +105,25 @@ export function makeRelationshipEdge(
   }
 }
 
+export function normalizeRelationships(nodes: Node[], edges: Edge[]): NormalizedRelationship[] {
+  const tables = new Map(nodes.filter(isEditorNode).map((node) => [node.id, node]))
+  return edges.flatMap((edge) => {
+    const source = tables.get(edge.source)
+    const target = tables.get(edge.target)
+    if (!source || !target) return []
+    const data = edge.data as Record<string, unknown> | undefined
+    return [{
+      sourceTable: source.data.tableName,
+      sourceColumn: typeof data?.sourceColumn === 'string' ? data.sourceColumn : edge.sourceHandle?.replace(/-source$/, ''),
+      targetTable: target.data.tableName,
+      targetColumn: typeof data?.targetColumn === 'string' ? data.targetColumn : edge.targetHandle?.replace(/-target$/, ''),
+      sourceCardinality: typeof data?.sourceCardinality === 'string' ? data.sourceCardinality : 'N',
+      targetCardinality: typeof data?.targetCardinality === 'string' ? data.targetCardinality : '1',
+      label: typeof data?.label === 'string' ? data.label : (typeof edge.label === 'string' ? edge.label : 'N:1'),
+    }]
+  })
+}
+
 function quoteIdentifier(name: string, dialect: EditorDialect) {
   if (dialect === 'mysql') return `\`${name}\``
   if (dialect === 'sqlserver') return `[${name}]`
@@ -124,6 +153,7 @@ function normalizeType(type: string, dialect: EditorDialect) {
 
 export function serializeSchema(nodes: Node[], dialect: EditorDialect, edges: Edge[] = []) {
   const tables = nodes.filter(isEditorNode)
+  const relationships = normalizeRelationships(nodes, edges)
 
   if (dialect === 'json') {
     const tableMap = Object.fromEntries(
@@ -144,11 +174,14 @@ export function serializeSchema(nodes: Node[], dialect: EditorDialect, edges: Ed
     )
     const json = {
       tables: tableMap,
-      relations: edges.map((edge) => ({
-        source: edge.source,
-        sourceHandle: edge.sourceHandle,
-        target: edge.target,
-        targetHandle: edge.targetHandle,
+      relations: relationships.map((relationship) => ({
+        source: relationship.sourceTable,
+        sourceColumn: relationship.sourceColumn,
+        target: relationship.targetTable,
+        targetColumn: relationship.targetColumn,
+        sourceCardinality: relationship.sourceCardinality,
+        targetCardinality: relationship.targetCardinality,
+        label: relationship.label,
       })),
     }
     return JSON.stringify(json, null, 2)
@@ -167,8 +200,14 @@ export function serializeSchema(nodes: Node[], dialect: EditorDialect, edges: Ed
         column.isPrimaryKey && primaryKeys.length === 1 ? 'PRIMARY KEY' : '',
       ].filter(Boolean)
 
-      if (column.references?.table && column.references?.column) {
-        pieces.push(`REFERENCES ${quoteIdentifier(column.references.table, dialect)}(${quoteIdentifier(column.references.column, dialect)})`)
+      const relation = relationships.find((item) =>
+        item.sourceTable === table.data.tableName && item.sourceColumn === column.name
+      )
+      const reference = relation?.targetColumn
+        ? { table: relation.targetTable, column: relation.targetColumn }
+        : column.references
+      if (reference?.table && reference?.column) {
+        pieces.push(`REFERENCES ${quoteIdentifier(reference.table, dialect)}(${quoteIdentifier(reference.column, dialect)})`)
       }
 
       return `  ${pieces.join(' ')}`
@@ -184,9 +223,9 @@ export function serializeSchema(nodes: Node[], dialect: EditorDialect, edges: Ed
 
 export function serializeAllDialects(nodes: Node[], edges: Edge[] = []) {
   return {
-    postgresql: serializeSchema(nodes, 'postgresql'),
-    mysql: serializeSchema(nodes, 'mysql'),
-    sqlserver: serializeSchema(nodes, 'sqlserver'),
+    postgresql: serializeSchema(nodes, 'postgresql', edges),
+    mysql: serializeSchema(nodes, 'mysql', edges),
+    sqlserver: serializeSchema(nodes, 'sqlserver', edges),
     json: serializeSchema(nodes, 'json', edges),
   }
 }

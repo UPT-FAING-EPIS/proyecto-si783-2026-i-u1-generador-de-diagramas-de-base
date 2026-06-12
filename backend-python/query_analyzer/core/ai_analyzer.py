@@ -51,6 +51,7 @@ class AIAnalyzer:
         base_url: str | None = None,
         api_key: str | None = None,
         model: str | None = None,
+        protocol: str = "openai",
     ) -> None:
         """Inicializa con parámetros explícitos o variables de entorno como fallback.
 
@@ -62,9 +63,10 @@ class AIAnalyzer:
         self.base_url = (base_url or os.environ.get("QA_AI_BASE_URL", "")).strip()
         self.api_key = (api_key or os.environ.get("QA_AI_API_KEY", "")).strip()
         self.model = (model or os.environ.get("QA_AI_MODEL", "gpt-4o")).strip()
+        self.protocol = protocol
 
         # Disponibilidad de IA
-        self.available = bool(self.base_url and self.api_key)
+        self.available = bool(self.base_url and (self.api_key or "localhost" in self.base_url or "127.0.0.1" in self.base_url))
 
         if self.available:
             logger.info(
@@ -208,6 +210,11 @@ Be specific, mention table names and operation types. Focus on what the query ac
                 "requests library required for AI analysis. Install with: pip install requests"
             ) from e
 
+        if self.protocol == "anthropic":
+            return self._call_anthropic(requests, prompt)
+        if self.protocol == "gemini":
+            return self._call_gemini(requests, prompt)
+
         # Construir headers
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -258,6 +265,28 @@ Be specific, mention table names and operation types. Focus on what the query ac
             ) from e
         except Exception as e:
             raise Exception(f"Failed to call AI provider: {e}") from e
+
+    def _call_anthropic(self, requests, prompt: str) -> str | None:
+        response = requests.post(
+            f"{self.base_url.rstrip('/')}/messages",
+            headers={"x-api-key": self.api_key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+            json={"model": self.model, "max_tokens": 1000, "messages": [{"role": "user", "content": prompt}]},
+            timeout=30,
+        )
+        response.raise_for_status()
+        blocks = response.json().get("content", [])
+        return "\n".join(block.get("text", "") for block in blocks if block.get("type") == "text") or None
+
+    def _call_gemini(self, requests, prompt: str) -> str | None:
+        response = requests.post(
+            f"{self.base_url.rstrip('/')}/models/{self.model}:generateContent?key={self.api_key}",
+            json={"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1000}},
+            timeout=30,
+        )
+        response.raise_for_status()
+        candidates = response.json().get("candidates", [])
+        parts = candidates[0].get("content", {}).get("parts", []) if candidates else []
+        return "\n".join(part.get("text", "") for part in parts) or None
 
     def _parse_response(self, response: str) -> AIAnalysisResult:
         """Parsea la respuesta de la IA.

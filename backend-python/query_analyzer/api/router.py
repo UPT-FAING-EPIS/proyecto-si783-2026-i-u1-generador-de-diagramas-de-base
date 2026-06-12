@@ -2,15 +2,18 @@
 
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from query_analyzer.adapters import AdapterRegistry
 from query_analyzer.adapters.models import ConnectionConfig
 from query_analyzer.core import AIAnalyzer
+from query_analyzer.config.ai_providers import AIProviderStore, PRESETS
 
 from .schemas import (
     AIAnalyzeRequest,
     AIAnalyzeResponse,
+    AIProviderUpdate,
+    AIProviderWrite,
     AnalyzeRequest,
     AnalyzeResponse,
     ConnectionRequest,
@@ -21,6 +24,7 @@ from .schemas import (
 )
 
 router = APIRouter(prefix="/analyzer", tags=["Query Analyzer"])
+provider_store = AIProviderStore()
 
 
 def _build_config(conn: ConnectionRequest) -> ConnectionConfig:
@@ -83,10 +87,14 @@ def analyze_query(req: AnalyzeRequest) -> AnalyzeResponse:
 def ai_analyze(req: AIAnalyzeRequest) -> AIAnalyzeResponse:
     """Analiza un plan EXPLAIN usando IA."""
     try:
+        provider = provider_store.get(req.ai_config.provider_id)
+        if not provider:
+            raise HTTPException(status_code=404, detail="Proveedor de IA no encontrado")
         analyzer = AIAnalyzer(
-            base_url=req.ai_config.base_url,
-            api_key=req.ai_config.api_key,
-            model=req.ai_config.model,
+            base_url=provider["base_url"],
+            api_key=provider.get("api_key"),
+            model=provider["model"],
+            protocol=provider.get("protocol", "openai"),
         )
 
         if not analyzer.available:
@@ -105,6 +113,49 @@ def ai_analyze(req: AIAnalyzeRequest) -> AIAnalyzeResponse:
         )
     except Exception as e:
         return AIAnalyzeResponse(success=False, error=str(e))
+
+
+@router.get("/providers")
+def list_ai_providers():
+    return {"providers": provider_store.list(), "presets": [
+        {"id": key, "name": value[0], "base_url": value[1], "model": value[2], "protocol": value[3]}
+        for key, value in PRESETS.items()
+    ]}
+
+
+@router.post("/providers")
+def create_ai_provider(req: AIProviderWrite):
+    return provider_store.create(req.model_dump())
+
+
+@router.patch("/providers/{provider_id}")
+def update_ai_provider(provider_id: str, req: AIProviderUpdate):
+    provider = provider_store.update(provider_id, req.model_dump())
+    if not provider:
+        raise HTTPException(status_code=404, detail="Proveedor de IA no encontrado")
+    return provider
+
+
+@router.delete("/providers/{provider_id}")
+def delete_ai_provider(provider_id: str):
+    if not provider_store.delete(provider_id):
+        raise HTTPException(status_code=404, detail="Proveedor de IA no encontrado")
+    return {"ok": True}
+
+
+@router.post("/providers/{provider_id}/test")
+def test_ai_provider(provider_id: str):
+    provider = provider_store.get(provider_id)
+    if not provider:
+        raise HTTPException(status_code=404, detail="Proveedor de IA no encontrado")
+    analyzer = AIAnalyzer(
+        base_url=provider["base_url"],
+        api_key=provider.get("api_key"),
+        model=provider["model"],
+        protocol=provider.get("protocol", "openai"),
+    )
+    result = analyzer.analyze({"test": "sequential scan"}, "SELECT 1", "postgresql")
+    return {"success": result is not None}
 
 
 @router.post("/metrics", response_model=MetricsResponse)

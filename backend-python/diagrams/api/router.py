@@ -1,6 +1,8 @@
 import json
+import math
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -10,7 +12,7 @@ from diagrams.schemas import (
     ProjectCreate, ProjectUpdate, ProjectResponse,
     DiagramCreate, DiagramUpdate, DiagramResponse,
     VersionCreate, VersionDetail, VersionSummary,
-    DiagramLayoutUpdate,
+    DiagramLayoutUpdate, TableRowsRequest, TableRowsResponse,
 )
 from backend.models.schemas import ConexionRequest
 from backend.connectors.connector_factory import get_connector
@@ -33,6 +35,43 @@ def quote_identifier(name: str, dialect: str) -> str:
     if dialect == "sqlserver":
         return f"[{name.replace(']', ']]')}]"
     return f'"{name.replace(chr(34), chr(34) * 2)}"'
+
+
+def fetch_table_rows(connection: ConexionRequest, table_name: str, page: int, page_size: int):
+    dialect = connection.motor.value if connection.motor else ""
+    quoted_table = quote_identifier(table_name, dialect)
+    offset = (page - 1) * page_size
+
+    with get_connector(connection) as connector:
+        cursor = connector._connection.cursor()
+        cursor.execute(f"SELECT COUNT(*) FROM {quoted_table}")
+        count_row = cursor.fetchone()
+        if isinstance(count_row, dict):
+            total_rows = int(next(iter(count_row.values())) or 0)
+        else:
+            total_rows = int(count_row[0] or 0)
+
+        if dialect == "sqlserver":
+            cursor.execute(
+                f"SELECT * FROM {quoted_table} ORDER BY (SELECT NULL) "
+                "OFFSET ? ROWS FETCH NEXT ? ROWS ONLY",
+                offset,
+                page_size,
+            )
+        else:
+            cursor.execute(f"SELECT * FROM {quoted_table} LIMIT %s OFFSET %s", (page_size, offset))
+
+        columns = [description[0] for description in cursor.description]
+        raw_rows = cursor.fetchall()
+        rows = []
+        for row in raw_rows:
+            if isinstance(row, dict):
+                rows.append([row.get(column) for column in columns])
+            else:
+                rows.append(list(row))
+        cursor.close()
+
+    return columns, jsonable_encoder(rows), total_rows
 
 
 def column_type_sql(column, dialect: str) -> str:
@@ -328,6 +367,7 @@ def generate_diagram_from_db(req: GenerateDiagramRequest, projectId: int = Query
             project_id=projectId,
         )
         db.add(diagram)
+        project.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(diagram)
         return diagram
@@ -357,6 +397,7 @@ def refresh_diagram(diagram_id: int, req: RefreshDiagramRequest, db: Session = D
         diagram.source_database = f"{full_schema.motor}:{full_schema.database_name}"
         diagram.selected_tables_json = json.dumps([table.name for table in tables])
         diagram.last_synced_at = datetime.utcnow()
+        diagram.project.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(diagram)
         return diagram
@@ -378,6 +419,7 @@ def update_diagram_layout(diagram_id: int, req: DiagramLayoutUpdate, db: Session
     if req.viewport is not None:
         flow["viewport"] = req.viewport
     diagram.schema_json = json.dumps(flow)
+    diagram.project.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(diagram)
     return diagram
@@ -393,6 +435,37 @@ def get_project_diagram(project_id: int, db: Session) -> Diagram:
     if not diagram:
         raise HTTPException(status_code=404, detail="Diagram not found")
     return diagram
+
+
+@router.post("/projects/{project_id}/tables/{table_name}/rows", response_model=TableRowsResponse)
+def preview_project_table(
+    project_id: int,
+    table_name: str,
+    req: TableRowsRequest,
+    db: Session = Depends(get_db),
+):
+    diagram = get_project_diagram(project_id, db)
+    selected_tables = json.loads(diagram.selected_tables_json or "[]")
+    if table_name not in selected_tables:
+        raise HTTPException(status_code=403, detail="Table is not part of this diagram")
+
+    page = max(1, req.page)
+    page_size = min(max(1, req.page_size), 100)
+    try:
+        columns, rows, total_rows = fetch_table_rows(req.connection, table_name, page, page_size)
+        return TableRowsResponse(
+            table_name=table_name,
+            columns=columns,
+            rows=rows,
+            page=page,
+            page_size=page_size,
+            total_rows=total_rows,
+            total_pages=max(1, math.ceil(total_rows / page_size)),
+        )
+    except Exception as error:
+        if isinstance(error, HTTPException):
+            raise
+        raise HTTPException(status_code=500, detail=f"No se pudieron consultar los datos: {error}")
 
 
 def serialize_version(version: DiagramVersion) -> dict:

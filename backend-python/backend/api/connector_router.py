@@ -4,8 +4,10 @@ Rutas para manejar la conexión a bases de datos externas y extracción de esque
 Incluye endpoints para guardar, listar y eliminar conexiones exitosas.
 """
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 from typing import Dict, Any, List
+import math
 
 from backend.core.database import get_db
 from backend.core.encryption import encrypt_password, decrypt_password
@@ -16,12 +18,22 @@ from backend.models.schemas import (
     DatabaseSchema,
     InsertRequest,
     InsertResponse,
+    TableRowsRequest,
+    TableRowsResponse,
 )
 from backend.connectors.connector_factory import get_connector
 from backend.analyzers.schema_analyzer import analyze_schema
 from backend.generators.data_generator import DataGenerator
 
 router = APIRouter(prefix="/connect", tags=["Connector"])
+
+
+def quote_table(name: str, motor: str) -> str:
+    if motor == "mysql":
+        return f"`{name.replace('`', '``')}`"
+    if motor == "sqlserver":
+        return f"[{name.replace(']', ']]')}]"
+    return f'"{name.replace(chr(34), chr(34) * 2)}"'
 
 
 # ─────────────────────────────────────────────────────────────
@@ -98,6 +110,55 @@ def get_external_schema(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error obteniendo esquema: {str(e)}")
+
+
+@router.post("/table-rows", response_model=TableRowsResponse)
+def list_table_rows(req: TableRowsRequest):
+    """Lists real rows from one detected table without modifying the database."""
+    try:
+        motor = req.connection.motor.value if req.connection.motor else ""
+        with get_connector(req.connection) as connector:
+            schema = analyze_schema(connector)
+            allowed_tables = {table.name for table in schema.tables}
+            if req.table_name not in allowed_tables:
+                raise HTTPException(status_code=404, detail="Tabla no encontrada en la base de datos.")
+
+            table = quote_table(req.table_name, motor)
+            offset = (req.page - 1) * req.page_size
+            cursor = connector._connection.cursor()
+            cursor.execute(f"SELECT COUNT(*) FROM {table}")
+            count_row = cursor.fetchone()
+            total_rows = int(next(iter(count_row.values())) if isinstance(count_row, dict) else count_row[0])
+
+            if motor == "sqlserver":
+                cursor.execute(
+                    f"SELECT * FROM {table} ORDER BY (SELECT NULL) OFFSET ? ROWS FETCH NEXT ? ROWS ONLY",
+                    offset,
+                    req.page_size,
+                )
+            else:
+                cursor.execute(f"SELECT * FROM {table} LIMIT %s OFFSET %s", (req.page_size, offset))
+
+            columns = [description[0] for description in cursor.description]
+            rows = [
+                [row.get(column) for column in columns] if isinstance(row, dict) else list(row)
+                for row in cursor.fetchall()
+            ]
+            cursor.close()
+
+        return TableRowsResponse(
+            table_name=req.table_name,
+            columns=columns,
+            rows=jsonable_encoder(rows),
+            page=req.page,
+            page_size=req.page_size,
+            total_rows=total_rows,
+            total_pages=max(1, math.ceil(total_rows / req.page_size)),
+        )
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"No se pudieron listar los datos: {error}")
 
 
 # ─────────────────────────────────────────────────────────────

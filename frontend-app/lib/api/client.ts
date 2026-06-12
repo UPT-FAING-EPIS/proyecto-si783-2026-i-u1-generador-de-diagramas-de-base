@@ -3,7 +3,7 @@ import type { DatabaseConnection } from '@/lib/store/useConnectionStore';
 import type { FlowJson } from '@/lib/flow-types';
 import type { EditorDialect } from '@/lib/editor-schema';
 
-let API_ROOT = 'http://localhost:8000';
+let API_ROOT = 'http://127.0.0.1:8000';
 let API_BASE = `${API_ROOT}/api/v1`;
 
 type JsonObject = Record<string, unknown>;
@@ -13,7 +13,7 @@ export interface ProjectResponse {
   name: string;
   description: string | null;
   created_at: string;
-  updated_at: string;
+  updated_at: string | null;
   deleted_at: string | null;
   is_public: boolean;
   share_access: 'view' | 'edit';
@@ -75,7 +75,7 @@ interface VersionWire {
 export async function initApiClient() {
   try {
     const port = await invoke<number>('get_sidecar_port');
-    API_ROOT = `http://localhost:${port}`;
+    API_ROOT = `http://127.0.0.1:${port}`;
     API_BASE = `${API_ROOT}/api/v1`;
   } catch {
     // Browser development uses the conventional local backend port.
@@ -91,10 +91,21 @@ export async function healthCheck() {
 }
 
 async function apiCall<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  });
+  const request = () => fetch(`${API_BASE}${endpoint}`, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options,
+    });
+
+  let response: Response;
+  try {
+    response = await request();
+  } catch {
+    // Recover when the WebView retained the development port or the sidecar
+    // needed a little longer to become reachable.
+    await initApiClient();
+    await waitForBackend();
+    response = await request();
+  }
 
   if (!response.ok) {
     let message = `API request failed (${response.status})`;
@@ -109,6 +120,19 @@ async function apiCall<T>(endpoint: string, options?: RequestInit): Promise<T> {
 
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
+}
+
+async function waitForBackend() {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    try {
+      await healthCheck();
+      return;
+    } catch {
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+    }
+  }
+  throw new Error('El backend local no está disponible. Reinicia FluxSQL Desktop e intenta nuevamente.');
 }
 
 function parseFlow(value: string | null): FlowJson {
@@ -239,6 +263,29 @@ export const diagramsAPI = {
       lastSyncedAt: refreshed.last_synced_at,
     };
   },
+  previewTable: (
+    projectId: string,
+    tableName: string,
+    connection: DatabaseConnection,
+    page = 1,
+    pageSize = 25,
+  ) =>
+    apiCall<{
+      table_name: string;
+      columns: string[];
+      rows: unknown[][];
+      page: number;
+      page_size: number;
+      total_rows: number;
+      total_pages: number;
+    }>(`/projects/${projectId}/tables/${encodeURIComponent(tableName)}/rows`, {
+      method: 'POST',
+      body: JSON.stringify({
+        connection: mapConnectionForGenerator(connection),
+        page,
+        page_size: pageSize,
+      }),
+    }),
 };
 
 export const versionsAPI = {
@@ -295,6 +342,24 @@ export const generatorAPI = {
       method: 'POST',
       body: JSON.stringify(mapConnectionForGenerator(config)),
     }),
+  listTableRows: (config: DatabaseConnection, tableName: string, page = 1, pageSize = 25) =>
+    apiCall<{
+      table_name: string;
+      columns: string[];
+      rows: unknown[][];
+      page: number;
+      page_size: number;
+      total_rows: number;
+      total_pages: number;
+    }>('/connect/table-rows', {
+      method: 'POST',
+      body: JSON.stringify({
+        connection: mapConnectionForGenerator(config),
+        table_name: tableName,
+        page,
+        page_size: pageSize,
+      }),
+    }),
   generatePreview: (payload: JsonObject) =>
     apiCall<JsonObject>('/generate/preview', { method: 'POST', body: JSON.stringify(payload) }),
   exportData: (payload: JsonObject) =>
@@ -331,6 +396,18 @@ export const analyzerAPI = {
     }),
   aiAnalyze: (payload: JsonObject) =>
     apiCall<JsonObject>('/analyzer/ai', { method: 'POST', body: JSON.stringify(payload) }),
+  listProviders: () => apiCall<{
+    providers: Array<{ id: string; name: string; provider: string; protocol: string; base_url: string; model: string; has_api_key: boolean }>;
+    presets: Array<{ id: string; name: string; protocol: string; base_url: string; model: string }>;
+  }>('/analyzer/providers'),
+  createProvider: (payload: JsonObject) =>
+    apiCall<{ id: string; name: string }>('/analyzer/providers', { method: 'POST', body: JSON.stringify(payload) }),
+  updateProvider: (id: string, payload: JsonObject) =>
+    apiCall<{ id: string; name: string }>(`/analyzer/providers/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  deleteProvider: (id: string) =>
+    apiCall<{ ok: boolean }>(`/analyzer/providers/${id}`, { method: 'DELETE' }),
+  testProvider: (id: string) =>
+    apiCall<{ success: boolean }>(`/analyzer/providers/${id}/test`, { method: 'POST' }),
   getSlowQueries: (payload: JsonObject & { connection: DatabaseConnection }) =>
     apiCall<JsonObject[]>('/analyzer/slow-queries', {
       method: 'POST',

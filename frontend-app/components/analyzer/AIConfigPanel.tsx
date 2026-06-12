@@ -1,128 +1,98 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { Bot, Settings2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { useEffect, useState } from 'react'
+import { Bot, Settings2, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { analyzerAPI } from '@/lib/api/client'
 
-interface AIConfigPanelProps {
-  onSaveConfig: (config: any) => void;
-  onAnalyzeWithAI: () => void;
-  isAnalyzingAI: boolean;
-  disabled: boolean;
+interface Provider { id: string; name: string; provider: string; protocol: string; base_url: string; model: string; has_api_key: boolean }
+interface Preset { id: string; name: string; protocol: string; base_url: string; model: string }
+interface Props {
+  onSaveConfig: (config: { providerId: string }) => void
+  onAnalyzeWithAI: () => void
+  isAnalyzingAI: boolean
+  disabled: boolean
 }
 
-export function AIConfigPanel({ onSaveConfig, onAnalyzeWithAI, isAnalyzingAI, disabled }: AIConfigPanelProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isConfigured, setIsConfigured] = useState(false);
-  const [config, setConfig] = useState({
-    provider: 'openai',
-    apiKey: '',
-    model: 'gpt-4o'
-  });
+export function AIConfigPanel({ onSaveConfig, onAnalyzeWithAI, isAnalyzingAI, disabled }: Props) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [providers, setProviders] = useState<Provider[]>([])
+  const [presets, setPresets] = useState<Preset[]>([])
+  const [selectedId, setSelectedId] = useState('')
+  const [form, setForm] = useState({ name: '', provider: 'openai', protocol: 'openai', base_url: '', model: '', api_key: '' })
 
-  const hasApiKey = config.apiKey.trim().length > 0;
+  async function loadProviders() {
+    const result = await analyzerAPI.listProviders()
+    setProviders(result.providers)
+    setPresets(result.presets)
+    if (!selectedId && result.providers[0]) selectProvider(result.providers[0])
+  }
 
-  function handleSaveConfig() {
-    if (!hasApiKey) {
-      setIsConfigured(false);
-      toast.error('Agrega una API key para habilitar el análisis con IA.');
-      return;
-    }
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadProviders().catch(() => toast.error('No se pudieron cargar los proveedores de IA.'))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-    onSaveConfig({
-      ...config,
-      apiKey: config.apiKey.trim(),
-      model: config.model.trim() || 'gpt-4o',
-    });
-    setIsConfigured(true);
-    toast.success('Configuración de IA guardada.');
+  function selectProvider(provider: Provider) {
+    setSelectedId(provider.id)
+    setForm({ ...provider, api_key: '' })
+    onSaveConfig({ providerId: provider.id })
+  }
+
+  function selectPreset(id: string) {
+    const preset = presets.find((item) => item.id === id)
+    if (!preset) return
+    setSelectedId('')
+    setForm({ name: preset.name, provider: preset.id, protocol: preset.protocol, base_url: preset.base_url, model: preset.model, api_key: '' })
+  }
+
+  async function handleSave() {
+    if (!form.name.trim() || !form.base_url.trim() || !form.model.trim()) return toast.error('Completa nombre, URL y modelo.')
+    const saved = selectedId
+      ? await analyzerAPI.updateProvider(selectedId, form)
+      : await analyzerAPI.createProvider(form)
+    setSelectedId(saved.id)
+    onSaveConfig({ providerId: saved.id })
+    await loadProviders()
+    toast.success('Proveedor guardado de forma cifrada.')
+  }
+
+  async function handleDelete(id: string) {
+    await analyzerAPI.deleteProvider(id)
+    if (selectedId === id) setSelectedId('')
+    await loadProviders()
+    toast.success('Proveedor eliminado.')
+  }
+
+  async function handleTest() {
+    if (!selectedId) return
+    const result = await analyzerAPI.testProvider(selectedId)
+    toast[result.success ? 'success' : 'error'](result.success ? 'Proveedor conectado correctamente.' : 'El proveedor no respondió.')
   }
 
   return (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-      <div 
-        className="flex items-center justify-between p-4 bg-gray-800/50 cursor-pointer hover:bg-gray-800 transition-colors"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <div className="flex items-center gap-2">
-          <Bot className="w-5 h-5 text-blue-400" />
-          <h2 className="font-semibold text-white">Asistente IA</h2>
-        </div>
-        <Settings2 className="w-4 h-4 text-gray-400" />
-      </div>
-
-      {isOpen && (
-        <div className="p-4 border-t border-gray-800 flex flex-col gap-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1">Proveedor</label>
-            <select 
-              value={config.provider}
-              onChange={(e) => {
-                setConfig({...config, provider: e.target.value});
-                setIsConfigured(false);
-              }}
-              className="w-full bg-gray-950 border border-gray-700 rounded px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none"
-            >
-              <option value="openai">OpenAI</option>
-              <option value="anthropic">Anthropic</option>
-              <option value="gemini">Google Gemini</option>
-              <option value="ollama">Ollama (Local)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1">API Key</label>
-            <input 
-              type="password"
-              value={config.apiKey}
-              onChange={(e) => {
-                setConfig({...config, apiKey: e.target.value});
-                setIsConfigured(false);
-              }}
-              className="w-full bg-gray-950 border border-gray-700 rounded px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none"
-              placeholder="sk-..."
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1">Modelo</label>
-            <input 
-              type="text"
-              value={config.model}
-              onChange={(e) => {
-                setConfig({...config, model: e.target.value});
-                setIsConfigured(false);
-              }}
-              className="w-full bg-gray-950 border border-gray-700 rounded px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none"
-              placeholder="gpt-4o"
-            />
-          </div>
-
-          <button
-            onClick={handleSaveConfig}
-            className="w-full bg-gray-800 hover:bg-gray-700 text-white py-1.5 rounded text-sm font-medium transition-colors"
-          >
-            Guardar Configuración
-          </button>
-        </div>
-      )}
-
-      {isConfigured && (
-        <div className="p-4 bg-gray-900 border-t border-gray-800">
-        <button 
-          onClick={onAnalyzeWithAI}
-          disabled={disabled || isAnalyzingAI}
-          className="w-full bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isAnalyzingAI ? (
-            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
-          ) : (
-            <Bot className="w-4 h-4" />
-          )}
-          Explicar con IA
-        </button>
-        </div>
-      )}
+    <div className="overflow-hidden rounded-xl border border-gray-800 bg-gray-900">
+      <button className="flex w-full items-center justify-between bg-gray-800/50 p-4 hover:bg-gray-800" onClick={() => setIsOpen(!isOpen)}>
+        <span className="flex items-center gap-2 font-semibold text-white"><Bot className="h-5 w-5 text-blue-400" />Asistente IA</span>
+        <Settings2 className="h-4 w-4 text-gray-400" />
+      </button>
+      {isOpen && <div className="flex flex-col gap-3 border-t border-gray-800 p-4">
+        <select value={form.provider} onChange={(event) => selectPreset(event.target.value)} className="rounded border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white">
+          {presets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+        </select>
+        <input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Nombre" className="rounded border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white" />
+        <input value={form.base_url} onChange={(event) => setForm({ ...form, base_url: event.target.value })} placeholder="URL base" className="rounded border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white" />
+        <input value={form.model} onChange={(event) => setForm({ ...form, model: event.target.value })} placeholder="Modelo" className="rounded border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white" />
+        <input type="password" value={form.api_key} onChange={(event) => setForm({ ...form, api_key: event.target.value })} placeholder={selectedId ? 'Nueva API key (opcional)' : 'API key'} className="rounded border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white" />
+        <button onClick={() => void handleSave()} className="rounded bg-gray-800 py-2 text-sm font-medium text-white hover:bg-gray-700">Guardar proveedor</button>
+        {selectedId && <button onClick={() => void handleTest()} className="rounded border border-blue-500/30 py-2 text-sm font-medium text-blue-300">Probar proveedor</button>}
+        {providers.map((provider) => <div key={provider.id} className={`flex items-center gap-2 rounded border p-2 ${selectedId === provider.id ? 'border-blue-500 bg-blue-500/10' : 'border-gray-800'}`}>
+          <button className="min-w-0 flex-1 text-left" onClick={() => selectProvider(provider)}><div className="truncate text-sm text-white">{provider.name}</div><div className="truncate text-xs text-gray-500">{provider.model}</div></button>
+          <button title="Eliminar proveedor" onClick={() => void handleDelete(provider.id)} className="p-2 text-red-400"><Trash2 size={15} /></button>
+        </div>)}
+      </div>}
+      {selectedId && <div className="border-t border-gray-800 p-4"><button onClick={onAnalyzeWithAI} disabled={disabled || isAnalyzingAI} className="flex w-full items-center justify-center gap-2 rounded-lg border border-blue-500/30 bg-blue-600/20 py-2 text-sm font-medium text-blue-400 disabled:opacity-50"><Bot className="h-4 w-4" />{isAnalyzingAI ? 'Analizando...' : 'Explicar con IA'}</button></div>}
     </div>
-  );
+  )
 }

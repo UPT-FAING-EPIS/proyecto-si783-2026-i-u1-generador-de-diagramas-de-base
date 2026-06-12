@@ -118,7 +118,7 @@ function processJsonObject(obj: Record<string, unknown>): ParseResult {
   const relationItems = Array.isArray(obj.relations) ? obj.relations : []
   relationItems.forEach((item, index) => {
     if (!item || typeof item !== 'object') return
-    const relation = item as { source?: unknown; target?: unknown; sourceHandle?: unknown; targetHandle?: unknown }
+    const relation = item as { source?: unknown; target?: unknown; sourceHandle?: unknown; targetHandle?: unknown; sourceColumn?: unknown; targetColumn?: unknown; sourceCardinality?: unknown; targetCardinality?: unknown; label?: unknown }
     if (typeof relation.source !== 'string' || typeof relation.target !== 'string') return
     const source = tableIdByName.get(relation.source) ?? relation.source
     const target = tableIdByName.get(relation.target) ?? relation.target
@@ -126,11 +126,18 @@ function processJsonObject(obj: Record<string, unknown>): ParseResult {
       id: `json-rel-${source}-${target}-${index}`,
       source,
       target,
-      sourceHandle: typeof relation.sourceHandle === 'string' ? relation.sourceHandle : undefined,
-      targetHandle: typeof relation.targetHandle === 'string' ? relation.targetHandle : undefined,
-      type: 'smoothstep',
+      sourceHandle: typeof relation.sourceHandle === 'string' ? relation.sourceHandle : (typeof relation.sourceColumn === 'string' ? `${relation.sourceColumn}-source` : undefined),
+      targetHandle: typeof relation.targetHandle === 'string' ? relation.targetHandle : (typeof relation.targetColumn === 'string' ? `${relation.targetColumn}-target` : undefined),
+      type: 'relationship',
       animated: false,
       style: { stroke: '#00D4FF' },
+      data: {
+        sourceColumn: relation.sourceColumn,
+        targetColumn: relation.targetColumn,
+        sourceCardinality: relation.sourceCardinality ?? 'N',
+        targetCardinality: relation.targetCardinality ?? '1',
+        label: relation.label ?? 'N:1',
+      },
     })
   })
 
@@ -178,7 +185,7 @@ export interface MermaidResult {
 }
 
 type MermaidNode = Pick<FlowNode, 'id' | 'data'>
-type MermaidEdge = Pick<FlowEdge, 'source' | 'target'>
+type MermaidEdge = Pick<FlowEdge, 'source' | 'target'> & { data?: Record<string, unknown> }
 
 export function toMermaid(nodes: MermaidNode[], edges: MermaidEdge[]): MermaidResult {
   if (nodes.length === 0) {
@@ -215,10 +222,13 @@ export function toMermaid(nodes: MermaidNode[], edges: MermaidEdge[]): MermaidRe
     const sourceTable = (sourceNode?.data.tableName ?? edge.source).replace(/\s+/g, '_')
     const targetTable = (targetNode?.data.tableName ?? edge.target).replace(/\s+/g, '_')
     
-    const key = `${sourceTable}-${targetTable}`
+    const sourceCardinality = edge.data?.sourceCardinality === '1' ? '||' : '}o'
+    const targetCardinality = edge.data?.targetCardinality === 'N' ? 'o{' : '||'
+    const label = typeof edge.data?.label === 'string' ? edge.data.label : 'FK'
+    const key = `${sourceTable}-${targetTable}-${label}`
     if (!uniqueEdges.has(key)) {
       uniqueEdges.add(key)
-      code += `  ${sourceTable} ||--o{ ${targetTable} : "FK"\n`
+      code += `  ${sourceTable} ${sourceCardinality}--${targetCardinality} ${targetTable} : "${label}"\n`
     }
   })
 

@@ -2,19 +2,20 @@
 core/encryption.py
 Utilidades de cifrado simétrico (Fernet) para contraseñas de conexiones guardadas.
 """
+from pathlib import Path
 import base64
 import hashlib
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 from backend.core.config import settings
 
 
 def _get_fernet() -> Fernet:
-    """Deriva una clave Fernet de 32 bytes desde el ENCRYPTION_KEY."""
-    key_bytes = settings.ENCRYPTION_KEY.encode("utf-8")
-    # SHA-256 siempre produce 32 bytes, perfecto para Fernet (necesita 32 bytes en base64-url)
-    digest = hashlib.sha256(key_bytes).digest()
-    fernet_key = base64.urlsafe_b64encode(digest)
-    return Fernet(fernet_key)
+    """Carga o crea una clave local aleatoria fuera de los archivos cifrados."""
+    key_path = Path(settings.SECRETS_KEY_PATH)
+    key_path.parent.mkdir(parents=True, exist_ok=True)
+    if not key_path.exists():
+        key_path.write_bytes(Fernet.generate_key())
+    return Fernet(key_path.read_bytes())
 
 
 def encrypt_password(plain: str) -> str:
@@ -25,5 +26,8 @@ def encrypt_password(plain: str) -> str:
 
 def decrypt_password(token: str) -> str:
     """Descifra un token Fernet y devuelve la contraseña original."""
-    f = _get_fernet()
-    return f.decrypt(token.encode("utf-8")).decode("utf-8")
+    try:
+        return _get_fernet().decrypt(token.encode("utf-8")).decode("utf-8")
+    except InvalidToken:
+        digest = hashlib.sha256(settings.ENCRYPTION_KEY.encode("utf-8")).digest()
+        return Fernet(base64.urlsafe_b64encode(digest)).decrypt(token.encode("utf-8")).decode("utf-8")

@@ -33,9 +33,10 @@ export interface FlowEdge {
   target: string
   sourceHandle?: string
   targetHandle?: string
-  type: 'smoothstep'
+  type: 'smoothstep' | 'relationship'
   animated: boolean
   style: { stroke: string }
+  data?: Record<string, unknown>
 }
 
 export interface ParseError {

@@ -26,9 +26,10 @@ interface ProjectCardProps {
   members: { id: string; name: string }[]
   tags?: string[]
   currentUser?: { id: string; name: string } | null
+  onProjectsChanged?: () => void
 }
 
-export function ProjectCard({ project, role, isOwner = false, tags }: ProjectCardProps) {
+export function ProjectCard({ project, role, isOwner = false, tags, onProjectsChanged }: ProjectCardProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const isDeleted = Boolean(project.deleted_at)
@@ -54,7 +55,7 @@ export function ProjectCard({ project, role, isOwner = false, tags }: ProjectCar
       return
     }
     toast.success('Proyecto movido a la papelera')
-    window.location.reload()
+    onProjectsChanged?.()
   }
 
   const handleRestore = async () => {
@@ -64,7 +65,7 @@ export function ProjectCard({ project, role, isOwner = false, tags }: ProjectCar
       return
     }
     toast.success('Proyecto restaurado')
-    window.location.reload()
+    onProjectsChanged?.()
   }
 
   const handlePermanentDelete = async () => {
@@ -75,7 +76,7 @@ export function ProjectCard({ project, role, isOwner = false, tags }: ProjectCar
       return
     }
     toast.success('Proyecto eliminado definitivamente')
-    window.location.reload()
+    onProjectsChanged?.()
   }
 
   return (

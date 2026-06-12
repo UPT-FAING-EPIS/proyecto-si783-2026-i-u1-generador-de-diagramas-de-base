@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckSquare, Square, TableProperties } from 'lucide-react';
+import { CheckSquare, Eye, Square, TableProperties } from 'lucide-react';
 
 interface TableSchema {
   name: string;
@@ -14,6 +14,8 @@ interface SchemaViewerProps {
   onSelectAll: () => void;
   onDeselectAll: () => void;
   onRowCountChange: (tableName: string, count: number) => void;
+  onListRows?: (tableName: string) => void;
+  listingTable?: string | null;
 }
 
 export function SchemaViewer({ 
@@ -22,7 +24,9 @@ export function SchemaViewer({
   onToggleTable, 
   onSelectAll, 
   onDeselectAll,
-  onRowCountChange
+  onRowCountChange,
+  onListRows,
+  listingTable,
 }: SchemaViewerProps) {
   
   if (tables.length === 0) {
@@ -64,6 +68,7 @@ export function SchemaViewer({
               </th>
               <th className="px-4 py-3 font-medium">Tabla</th>
               <th className="px-4 py-3 font-medium w-48">Filas a generar</th>
+              {onListRows && <th className="px-4 py-3 font-medium w-36">Datos actuales</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800">
@@ -90,6 +95,19 @@ export function SchemaViewer({
                       className={`w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-white focus:border-blue-500 focus:outline-none ${!isSelected ? 'opacity-50 cursor-not-allowed' : ''}`}
                     />
                   </td>
+                  {onListRows && <td className="px-4 py-3">
+                    <button
+                      type="button"
+                      onClick={() => onListRows(table.name)}
+                      disabled={listingTable === table.name}
+                      className="flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs font-medium text-blue-300 hover:bg-blue-500/20 disabled:opacity-50"
+                    >
+                      {listingTable === table.name
+                        ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-300 border-t-transparent" />
+                        : <Eye className="h-3.5 w-3.5" />}
+                      Listar datos
+                    </button>
+                  </td>}
                 </tr>
               );
             })}

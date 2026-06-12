@@ -11,15 +11,16 @@ import { TagInput } from '@/components/ui/TagInput'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useConnectionStore } from '@/lib/store/useConnectionStore'
-import { generatorAPI, diagramsAPI } from '@/lib/api/client'
+import { generatorAPI, diagramsAPI, projectsAPI } from '@/lib/api/client'
 import { Loader2 } from 'lucide-react'
 
 interface CreateProjectModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onCreated?: () => void
 }
 
-export function CreateProjectModal({ open, onOpenChange }: CreateProjectModalProps) {
+export function CreateProjectModal({ open, onOpenChange, onCreated }: CreateProjectModalProps) {
   const router = useRouter()
   const { activeConnection } = useConnectionStore()
   const [error, setError] = useState<string | null>(null)
@@ -84,6 +85,7 @@ export function CreateProjectModal({ open, onOpenChange }: CreateProjectModalPro
         })
         toast.success('Diagrama generado')
       } catch (err) {
+        await projectsAPI.permanentlyDelete(projectId).catch(() => undefined)
         setError(err instanceof Error ? err.message : 'No se pudo generar el diagrama desde la base de datos.')
         setIsPending(false)
         return
@@ -94,6 +96,7 @@ export function CreateProjectModal({ open, onOpenChange }: CreateProjectModalPro
       setTags([])
       setTables([])
       setSelectedTables([])
+      onCreated?.()
       
       // Navigate directly to the editor
       router.push(`/editor?projectId=${projectId}`)

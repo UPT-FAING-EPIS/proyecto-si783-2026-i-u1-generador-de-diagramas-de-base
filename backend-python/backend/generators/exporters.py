@@ -8,8 +8,9 @@ import json
 import uuid
 from typing import Dict, Any
 from backend.models.schemas import DatabaseSchema
+from backend.core.config import settings
 
-TEMP_DIR = "/tmp/data_generator"
+TEMP_DIR = settings.TEMP_DIR
 os.makedirs(TEMP_DIR, exist_ok=True)
 
 def export_sql(data: Dict[str, Dict[str, Any]], schema: DatabaseSchema) -> str:

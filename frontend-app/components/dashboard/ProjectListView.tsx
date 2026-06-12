@@ -1,6 +1,7 @@
 'use client'
 
 import { getRelativeDate } from '@/lib/relativeDate'
+import Link from 'next/link'
 
 interface ProjectItem {
   project: {
@@ -24,7 +25,7 @@ export function ProjectListView({ projects }: ProjectListViewProps) {
   return (
     <div className="flex flex-col gap-1">
       {projects.map(item => (
-        <a
+        <Link
           key={item.project.id}
           href={`/editor?projectId=${item.project.id}`}
           className="flex items-center gap-4 px-4 py-3 rounded-lg transition-all group"
@@ -67,7 +68,7 @@ export function ProjectListView({ projects }: ProjectListViewProps) {
           <span className="text-xs flex-shrink-0" style={{ color: '#6B7280' }}>
             {getRelativeDate(item.project.updatedAt ?? item.project.createdAt ?? new Date())}
           </span>
-        </a>
+        </Link>
       ))}
     </div>
   )

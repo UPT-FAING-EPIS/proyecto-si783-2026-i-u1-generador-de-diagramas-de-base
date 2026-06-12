@@ -31,9 +31,7 @@ class AnalyzeRequest(BaseModel):
 class AIConfigRequest(BaseModel):
     """Configuración de IA para análisis avanzado."""
 
-    base_url: str = Field(..., description="URL del proveedor de IA")
-    api_key: str = Field(..., description="API key")
-    model: str = Field(default="gpt-4o", description="Modelo a usar")
+    provider_id: str = Field(..., description="Proveedor guardado localmente")
 
 
 class AIAnalyzeRequest(BaseModel):
@@ -43,6 +41,24 @@ class AIAnalyzeRequest(BaseModel):
     query: str = Field(..., description="Consulta original")
     engine: str = Field(..., description="Motor de BD")
     ai_config: AIConfigRequest
+
+
+class AIProviderWrite(BaseModel):
+    name: str
+    provider: str
+    protocol: str = "openai"
+    base_url: str = ""
+    model: str = ""
+    api_key: str = ""
+
+
+class AIProviderUpdate(BaseModel):
+    name: str | None = None
+    provider: str | None = None
+    protocol: str | None = None
+    base_url: str | None = None
+    model: str | None = None
+    api_key: str | None = None
 
 
 class MetricsRequest(BaseModel):

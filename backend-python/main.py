@@ -48,6 +48,18 @@ def startup_event():
             for name, definition in columns.items():
                 if name not in existing:
                     connection.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {definition}"))
+        # Older local databases received these columns through ALTER TABLE,
+        # which leaves existing rows as NULL and breaks response validation.
+        connection.execute(text(
+            "UPDATE projects "
+            "SET updated_at = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP) "
+            "WHERE updated_at IS NULL"
+        ))
+        connection.execute(text(
+            "UPDATE diagrams "
+            "SET updated_at = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP) "
+            "WHERE updated_at IS NULL"
+        ))
 
 
 # Configurar CORS (Tauri se conecta desde http://localhost o tauri://localhost)
