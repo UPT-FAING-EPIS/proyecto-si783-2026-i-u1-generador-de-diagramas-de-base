@@ -42,6 +42,9 @@ class DiagramUpdate(BaseModel):
 
 class DiagramResponse(DiagramBase):
     id: int
+    source_database: Optional[str] = None
+    selected_tables_json: str = "[]"
+    last_synced_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
@@ -73,3 +76,8 @@ class VersionDetail(VersionSummary):
     sql_content: str
     active_dialect: str
     snapshots: Dict[str, str]
+
+
+class DiagramLayoutUpdate(BaseModel):
+    positions: Dict[str, Dict[str, float]]
+    viewport: Optional[Dict[str, float]] = None

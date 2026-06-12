@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState, forwardRef, type ElementType } from 'react'
 import { ReactFlowProvider, useReactFlow, type Edge, type Node } from '@xyflow/react'
-import { ArrowLeft, CheckCircle2, Code2, Database, FileJson, History, PanelRight } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Code2, Database, FileJson, History, PanelRight, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { Canvas } from './Canvas'
 import { EditorPanel } from './EditorPanel'
-import { EditorInspector } from './EditorInspector'
+import { SchemaInspector } from './SchemaInspector'
 import { ExportMenu } from './ExportMenu'
 import { VersionHistorySheet } from './VersionHistorySheet'
 import { PublicShareToggle } from './PublicShareToggle'
@@ -16,6 +16,8 @@ import { saveDiagramAction } from '@/lib/backend/actions/diagrams/save'
 import { restoreVersionAction } from '@/lib/backend/actions/versions/restore'
 import { getSchemaStats, type EditorDialect } from '@/lib/editor-schema'
 import { toFlowJson } from '@/lib/flow-types'
+import { diagramsAPI } from '@/lib/api/client'
+import { useConnectionStore } from '@/lib/store/useConnectionStore'
 
 interface EditorLayoutProps {
   projectName: string
@@ -48,17 +50,18 @@ function EditorLayoutInner({
   const { toObject, fitView, setViewport } = useReactFlow()
   const nodes = useEditorStore((state) => state.nodes)
   const edges = useEditorStore((state) => state.edges)
-  const sqlValue = useEditorStore((state) => state.sqlValue)
   const mode = useEditorStore((state) => state.dialect)
   const setDialect = useEditorStore((state) => state.setDialect)
   const setSqlValue = useEditorStore((state) => state.setSqlValue)
   const setNodesAndEdges = useEditorStore((state) => state.setNodesAndEdges)
 
   const [saving, setSaving] = useState(false)
-  const [savedLabel, setSavedLabel] = useState('Listo para editar')
+  const [refreshing, setRefreshing] = useState(false)
+  const [savedLabel, setSavedLabel] = useState('Esquema sincronizado')
   const [showSqlPanel, setShowSqlPanel] = useState(true)
   const [showInspector, setShowInspector] = useState(true)
   const [diffModal, setDiffModal] = useState<{ open: boolean; initialVersionId?: string } | null>(null)
+  const activeConnection = useConnectionStore((state) => state.activeConnection)
 
   const [sqlWidth, setSqlWidth] = useState(450)
   const [inspectorWidth, setInspectorWidth] = useState(320)
@@ -103,8 +106,8 @@ function EditorLayoutInner({
 
   useEffect(() => {
     setDialect((dialect as EditorDialect) || 'postgresql')
-    if (initialSQL) setSqlValue(initialSQL)
-    if (initialNodes.length > 0) setNodesAndEdges(initialNodes, initialEdges)
+    setSqlValue(initialSQL ?? '')
+    setNodesAndEdges(initialNodes, initialEdges)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -116,9 +119,7 @@ function EditorLayoutInner({
 
       const result = await saveDiagramAction({
         projectId,
-        sqlContent: sqlValue,
         flowJson: flowObject,
-        dialect: mode,
       })
 
       if (result.error) {
@@ -138,6 +139,26 @@ function EditorLayoutInner({
       toast.error('No se pudo guardar el diagrama')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleRefresh() {
+    if (!activeConnection) {
+      toast.error('Conecta la base de datos de origen antes de actualizar.')
+      return
+    }
+    setRefreshing(true)
+    try {
+      const refreshed = await diagramsAPI.refreshByProject(projectId, activeConnection)
+      setNodesAndEdges(refreshed.flowJson.nodes ?? [], refreshed.flowJson.edges ?? [])
+      setDialect(refreshed.dialect)
+      setSqlValue(refreshed.sourceCode)
+      window.requestAnimationFrame(() => void fitView({ duration: 350, padding: 0.24 }))
+      toast.success('Diagrama actualizado desde la base de datos')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se pudo actualizar el diagrama')
+    } finally {
+      setRefreshing(false)
     }
   }
 
@@ -174,14 +195,6 @@ function EditorLayoutInner({
 
   function handleCompare(versionId: string) {
     setDiffModal({ open: true, initialVersionId: versionId })
-  }
-
-  function handleDialectChange(value: EditorDialect) {
-    setDialect(value)
-
-    window.setTimeout(() => {
-      fitView({ duration: 350, padding: 0.24 })
-    }, 80)
   }
 
   useEffect(() => {
@@ -237,18 +250,14 @@ function EditorLayoutInner({
           <h1 className="max-w-52 truncate text-sm font-semibold">{projectName}</h1>
 
           <div className="mx-auto hidden shrink-0 rounded-xl border border-[#1E2A45] bg-[#0A0F1E] p-1 md:flex">
-            {DIALECTS.map(({ value, label, icon: Icon }) => (
-              <button
+            {DIALECTS.filter(({ value }) => value === mode).map(({ value, label, icon: Icon }) => (
+              <div
                 key={value}
-                onClick={() => handleDialectChange(value)}
-                className={`flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs transition ${mode === value
-                    ? 'bg-[#123A79] text-[#BFDBFE]'
-                    : 'text-[#64748B] hover:text-white'
-                  }`}
+                className="flex items-center gap-1.5 rounded-lg bg-[#123A79] px-4 py-1.5 text-xs text-[#BFDBFE]"
               >
                 <Icon size={13} />
                 {label}
-              </button>
+              </div>
             ))}
           </div>
 
@@ -263,6 +272,16 @@ function EditorLayoutInner({
               initialIsPublic={initialIsPublic}
               initialShareAccess={initialShareAccess}
             />
+
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="inline-flex items-center gap-2 rounded-lg border border-[#1E2A45] px-3 py-2 text-xs text-[#BFDBFE] hover:bg-[#111827] disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+              Actualizar desde BD
+            </button>
 
             <ExportMenu projectName={projectName} />
           </div>
@@ -334,7 +353,7 @@ function EditorLayoutInner({
                 className="flex min-h-0 shrink-0 flex-col overflow-hidden border-l border-[#1E2A45] bg-[#0B1322]"
               >
                 <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-                  <EditorInspector />
+                  <SchemaInspector />
                 </div>
               </div>
             </>

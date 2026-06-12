@@ -67,9 +67,8 @@ function ToolbarButton({
   )
 }
 
-export function EditorToolbar({ projectId, projectName, dialect = 'postgresql', initialIsPublic = false }: EditorToolbarProps) {
+export function EditorToolbar({ projectId, projectName, initialIsPublic = false }: EditorToolbarProps) {
   const { toObject } = useReactFlow()
-  const sqlValue = useEditorStore((state) => state.sqlValue)
   const [saving, setSaving] = useState(false)
 
   const [diffModal, setDiffModal] = useState<{ open: boolean; initialVersionId?: string } | null>(null)
@@ -81,9 +80,7 @@ export function EditorToolbar({ projectId, projectName, dialect = 'postgresql', 
       
       const result = await saveDiagramAction({
         projectId,
-        sqlContent: sqlValue,
         flowJson: flowObject,
-        dialect
       })
 
       if (result.error) {

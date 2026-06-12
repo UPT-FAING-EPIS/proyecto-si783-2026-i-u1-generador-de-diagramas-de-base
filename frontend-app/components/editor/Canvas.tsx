@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { ReactFlow, Background, MiniMap, MarkerType, useReactFlow, type Node, type Edge } from '@xyflow/react'
+import { useMemo, useState } from 'react'
+import { ReactFlow, Background, MiniMap, useReactFlow, type Node, type Edge } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useEditorStore } from '@/store/useEditorStore'
 import { TableNode } from './nodes/TableNode'
@@ -17,56 +17,6 @@ const nodeTypes = {
 const edgeTypes = {
   relationship: RelationshipEdge,
 }
-
-const DEMO_NODES: Node[] = [
-  {
-    id: 'users',
-    type: 'tableNode',
-    position: { x: 80, y: 100 },
-    data: {
-      tableName: 'users',
-      columns: [
-        { name: 'id', type: 'UUID', isPrimaryKey: true, isForeignKey: false },
-        { name: 'email', type: 'TEXT', isPrimaryKey: false, isForeignKey: false },
-        { name: 'name', type: 'TEXT', isPrimaryKey: false, isForeignKey: false },
-        { name: 'created_at', type: 'TIMESTAMPTZ', isPrimaryKey: false, isForeignKey: false },
-      ],
-    },
-  },
-  {
-    id: 'projects',
-    type: 'tableNode',
-    position: { x: 460, y: 100 },
-    data: {
-      tableName: 'projects',
-      columns: [
-        { name: 'id', type: 'UUID', isPrimaryKey: true, isForeignKey: false },
-        { name: 'name', type: 'TEXT', isPrimaryKey: false, isForeignKey: false },
-        { name: 'owner_id', type: 'UUID', isPrimaryKey: false, isForeignKey: true },
-        { name: 'created_at', type: 'TIMESTAMPTZ', isPrimaryKey: false, isForeignKey: false },
-      ],
-    },
-  },
-]
-
-const DEMO_EDGES: Edge[] = [
-  {
-    id: 'fk-projects-users',
-    source: 'projects',
-    sourceHandle: 'owner_id-source',
-    target: 'users',
-    targetHandle: 'id-target',
-    type: 'relationship',
-    animated: false,
-    style: { stroke: '#00D4FF', strokeWidth: 1.5 },
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      width: 16,
-      height: 16,
-      color: '#00D4FF',
-    },
-  },
-]
 
 interface CanvasProps {
   projectId: string
@@ -95,13 +45,6 @@ export function Canvas({ projectId, emitNodeMove, onSave }: CanvasProps) {
       }
     })
   }, [edges, hoveredNodeId])
-
-  useEffect(() => {
-    if (nodes.length === 0) {
-      setNodesAndEdges(DEMO_NODES, DEMO_EDGES)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   return (
     <div className={`relative isolate h-full min-h-0 w-full overflow-hidden bg-[#07101F] ${showGrid ? '[background-image:radial-gradient(#1E3A5F_1px,transparent_1px)] [background-size:24px_24px]' : ''}`}>

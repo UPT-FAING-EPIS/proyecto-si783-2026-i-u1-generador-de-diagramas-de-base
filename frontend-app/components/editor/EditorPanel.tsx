@@ -3,8 +3,6 @@
 import dynamic from 'next/dynamic'
 import { useTheme } from 'next-themes'
 import { useEditorStore } from '@/store/useEditorStore'
-import { useSyncEditor } from '@/hooks/useSyncEditor'
-import type { Edge, Node } from '@xyflow/react'
 import type { EditorDialect } from '@/lib/editor-schema'
 
 const MonacoEditor = dynamic(
@@ -21,13 +19,11 @@ const MonacoEditor = dynamic(
 
 interface EditorPanelProps {
   mode: EditorDialect
-  emitSqlChange?: (nodes: Node[], edges: Edge[]) => void
 }
 
-export function EditorPanel({ mode, emitSqlChange }: EditorPanelProps) {
-  const { sqlValue, setSqlValue } = useEditorStore()
+export function EditorPanel({ mode }: EditorPanelProps) {
+  const { sqlValue } = useEditorStore()
   const { resolvedTheme } = useTheme()
-  useSyncEditor(mode, emitSqlChange)
 
   return (
     <div className="flex h-full w-full flex-col bg-[#101827]">
@@ -44,8 +40,9 @@ export function EditorPanel({ mode, emitSqlChange }: EditorPanelProps) {
           language={mode === 'json' ? 'json' : 'sql'}
           theme={resolvedTheme === 'dark' ? 'vs-dark' : 'light'}
           value={sqlValue}
-          onChange={(value) => setSqlValue(value ?? '')}
           options={{
+            readOnly: true,
+            readOnlyMessage: { value: 'El SQL refleja el esquema real. Modifica la base de datos y actualiza el diagrama.' },
             minimap: { enabled: false },
             fontSize: 13,
             fontFamily: "'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace",

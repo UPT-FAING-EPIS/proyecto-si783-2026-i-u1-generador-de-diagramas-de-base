@@ -3,26 +3,16 @@ import type { FlowJson } from '@/lib/flow-types'
 
 export async function saveDiagramAction({
   projectId,
-  sqlContent,
   flowJson,
-  dialect,
 }: {
   projectId: string
-  sqlContent: string
   flowJson: FlowJson
-  dialect: string
 }) {
   try {
-    await diagramsAPI.saveByProject(projectId, {
-      schema_json: JSON.stringify(flowJson),
-      sql_content: sqlContent,
-      active_dialect: dialect,
-    });
+    await diagramsAPI.saveLayoutByProject(projectId, flowJson);
     return { 
       success: true,
       flowJson,
-      activeDialect: dialect,
-      sqlContent,
       versionNumber: 1
     }
   } catch (error) {

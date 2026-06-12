@@ -27,6 +27,9 @@ class Diagram(Base):
     schema_json = Column(Text, nullable=True)
     sql_content = Column(Text, default="")
     active_dialect = Column(String, default="postgresql", nullable=False)
+    source_database = Column(String, nullable=True)
+    selected_tables_json = Column(Text, default="[]", nullable=False)
+    last_synced_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

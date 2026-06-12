@@ -2,6 +2,7 @@ import argparse
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import inspect, text
 
 # Import routers from the modules
 from backend.api.connector_router import router as connector_router
@@ -24,6 +25,29 @@ app = FastAPI(
 def startup_event():
     # Create SQLite tables
     Base.metadata.create_all(bind=engine)
+    # create_all does not add columns to existing local SQLite databases.
+    additions = {
+        "projects": {
+            "updated_at": "DATETIME",
+            "deleted_at": "DATETIME",
+            "is_public": "BOOLEAN NOT NULL DEFAULT 0",
+            "share_access": "VARCHAR NOT NULL DEFAULT 'view'",
+        },
+        "diagrams": {
+            "sql_content": "TEXT DEFAULT ''",
+            "active_dialect": "VARCHAR NOT NULL DEFAULT 'postgresql'",
+            "source_database": "VARCHAR",
+            "selected_tables_json": "TEXT NOT NULL DEFAULT '[]'",
+            "last_synced_at": "DATETIME",
+            "updated_at": "DATETIME",
+        },
+    }
+    with engine.begin() as connection:
+        for table, columns in additions.items():
+            existing = {column["name"] for column in inspect(engine).get_columns(table)}
+            for name, definition in columns.items():
+                if name not in existing:
+                    connection.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {definition}"))
 
 
 # Configurar CORS (Tauri se conecta desde http://localhost o tauri://localhost)

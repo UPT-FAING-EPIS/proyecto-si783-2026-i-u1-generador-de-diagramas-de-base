@@ -38,8 +38,8 @@ export function CreateProjectModal({ open, onOpenChange }: CreateProjectModalPro
         setIsLoadingSchema(true)
         try {
           const schemaData = await generatorAPI.getSchema(activeConnection)
-          if ((schemaData as any).tables) {
-            const tableNames = (schemaData as any).tables.map((t: any) => typeof t === 'string' ? t : t.name)
+          if (schemaData.tables) {
+            const tableNames = schemaData.tables.map((table) => typeof table === 'string' ? table : table.name)
             setTables(tableNames)
             setSelectedTables(tableNames) // Select all by default
           }
@@ -55,6 +55,10 @@ export function CreateProjectModal({ open, onOpenChange }: CreateProjectModalPro
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (!activeConnection || selectedTables.length === 0) {
+      setError('Conecta una base de datos y selecciona al menos una tabla.')
+      return
+    }
     setIsPending(true)
     setError(null)
 
@@ -71,36 +75,18 @@ export function CreateProjectModal({ open, onOpenChange }: CreateProjectModalPro
       const projectId = String(result.id)
       toast.success('Proyecto creado')
 
-      let hasDiagram = false
-
-      // If tables are selected, generate the diagram immediately
-      if (selectedTables.length > 0 && activeConnection) {
-        toast.info('Generando diagrama...')
-        try {
-          await diagramsAPI.generate(projectId, {
-            connection: activeConnection,
-            selected_tables: selectedTables,
-            name: name
-          })
-          hasDiagram = true
-          toast.success('Diagrama generado')
-        } catch (err) {
-          toast.warning('No se pudo generar desde la base de datos. Se abrirá un canvas vacío.')
-        }
-      }
-
-      if (!hasDiagram) {
-        try {
-          await diagramsAPI.create({
-            project_id: Number(projectId),
-            name: 'Diagrama Principal',
-            schema_json: JSON.stringify({ nodes: [], edges: [] }),
-            sql_content: '',
-            active_dialect: 'postgresql',
-          })
-        } catch (err) {
-          console.warn('No se pudo crear el diagrama base; el editor usará un canvas temporal.', err)
-        }
+      toast.info('Generando diagrama...')
+      try {
+        await diagramsAPI.generate(projectId, {
+          connection: activeConnection,
+          selected_tables: selectedTables,
+          name: name
+        })
+        toast.success('Diagrama generado')
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'No se pudo generar el diagrama desde la base de datos.')
+        setIsPending(false)
+        return
       }
       
       onOpenChange(false)

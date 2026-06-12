@@ -31,11 +31,8 @@ export default function ConnectPage() {
       await generatorAPI.testConnection(config);
       setActiveConnection(config);
       router.push('/dashboard');
-    } catch (err: any) {
-      // Modo local/desarrollo: permite abrir la UI básica aunque no haya una BD disponible.
-      console.warn("Backend falló. Usando conexión simulada para desarrollo...", err);
-      setActiveConnection(config);
-      router.push('/dashboard');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'No se pudo conectar a la base de datos.');
     } finally {
       setIsLoading(false);
     }

@@ -26,6 +26,9 @@ interface DiagramResponse {
   schema_json: string | null;
   sql_content: string;
   active_dialect: EditorDialect;
+  source_database?: string | null;
+  selected_tables_json?: string;
+  last_synced_at?: string | null;
 }
 
 export interface DiagramData {
@@ -38,6 +41,8 @@ export interface DiagramData {
   dialect: EditorDialect;
   isPublic: boolean;
   shareAccess: 'view' | 'edit';
+  sourceDatabase?: string | null;
+  lastSyncedAt?: string | null;
 }
 
 export interface VersionSummary {
@@ -192,6 +197,8 @@ export const diagramsAPI = {
       dialect: diagram.active_dialect,
       isPublic: project.is_public,
       shareAccess: project.share_access,
+      sourceDatabase: diagram.source_database,
+      lastSyncedAt: diagram.last_synced_at,
     };
   },
   create: (data: JsonObject) =>
@@ -204,27 +211,33 @@ export const diagramsAPI = {
         connection: mapConnectionForGenerator(payload.connection),
       }),
     }),
-  saveByProject: async (
-    projectId: string,
-    data: { schema_json: string; sql_content: string; active_dialect: string },
-  ) => {
+  saveLayoutByProject: async (projectId: string, flowJson: FlowJson) => {
     const diagrams = await apiCall<DiagramResponse[]>(`/diagrams?projectId=${projectId}`);
     const diagram = diagrams[0];
-    if (!diagram) {
-      return apiCall<DiagramResponse>('/diagrams', {
-        method: 'POST',
-        body: JSON.stringify({
-          project_id: Number(projectId),
-          name: 'Diagrama Principal',
-          ...data,
-        }),
-      });
-    }
-
-    return apiCall<DiagramResponse>(`/diagrams/${diagram.id}`, {
+    if (!diagram) throw new Error('Diagram not found');
+    const positions = Object.fromEntries(
+      (flowJson.nodes ?? []).map((node) => [node.id, node.position]),
+    );
+    return apiCall<DiagramResponse>(`/diagrams/${diagram.id}/layout`, {
       method: 'PATCH',
-      body: JSON.stringify(data),
+      body: JSON.stringify({ positions, viewport: flowJson.viewport }),
     });
+  },
+  refreshByProject: async (projectId: string, connection: DatabaseConnection) => {
+    const diagrams = await apiCall<DiagramResponse[]>(`/diagrams?projectId=${projectId}`);
+    const diagram = diagrams[0];
+    if (!diagram) throw new Error('Diagram not found');
+    const refreshed = await apiCall<DiagramResponse>(`/diagrams/${diagram.id}/refresh`, {
+      method: 'POST',
+      body: JSON.stringify({ connection: mapConnectionForGenerator(connection) }),
+    });
+    return {
+      flowJson: parseFlow(refreshed.schema_json),
+      sourceCode: refreshed.sql_content,
+      dialect: refreshed.active_dialect,
+      sourceDatabase: refreshed.source_database,
+      lastSyncedAt: refreshed.last_synced_at,
+    };
   },
 };
 

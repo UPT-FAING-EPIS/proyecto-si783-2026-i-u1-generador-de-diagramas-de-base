@@ -10,6 +10,7 @@ from diagrams.schemas import (
     ProjectCreate, ProjectUpdate, ProjectResponse,
     DiagramCreate, DiagramUpdate, DiagramResponse,
     VersionCreate, VersionDetail, VersionSummary,
+    DiagramLayoutUpdate,
 )
 from backend.models.schemas import ConexionRequest
 from backend.connectors.connector_factory import get_connector
@@ -20,6 +21,145 @@ class GenerateDiagramRequest(BaseModel):
     connection: ConexionRequest
     selected_tables: List[str]
     name: str
+
+
+class RefreshDiagramRequest(BaseModel):
+    connection: ConexionRequest
+
+
+def quote_identifier(name: str, dialect: str) -> str:
+    if dialect == "mysql":
+        return f"`{name.replace('`', '``')}`"
+    if dialect == "sqlserver":
+        return f"[{name.replace(']', ']]')}]"
+    return f'"{name.replace(chr(34), chr(34) * 2)}"'
+
+
+def column_type_sql(column, dialect: str) -> str:
+    data_type = column.data_type or "TEXT"
+    if column.max_length and "(" not in data_type and data_type.upper() in {"VARCHAR", "CHAR", "NVARCHAR"}:
+        return f"{data_type}({column.max_length})"
+    return data_type
+
+
+def schema_to_sql(tables, dialect: str) -> str:
+    statements = []
+    for table in tables:
+        primary_keys = [column.name for column in table.columns if column.is_primary_key]
+        lines = []
+        for column in table.columns:
+            parts = [
+                quote_identifier(column.name, dialect),
+                column_type_sql(column, dialect),
+            ]
+            if not column.is_nullable:
+                parts.append("NOT NULL")
+            if column.default_value is not None:
+                parts.append(f"DEFAULT {column.default_value}")
+            if len(primary_keys) == 1 and column.is_primary_key:
+                parts.append("PRIMARY KEY")
+            if column.foreign_key:
+                parts.append(
+                    "REFERENCES "
+                    f"{quote_identifier(column.foreign_key['table'], dialect)}"
+                    f"({quote_identifier(column.foreign_key['column'], dialect)})"
+                )
+            lines.append("  " + " ".join(parts))
+        if len(primary_keys) > 1:
+            keys = ", ".join(quote_identifier(key, dialect) for key in primary_keys)
+            lines.append(f"  PRIMARY KEY ({keys})")
+        statements.append(
+            f"CREATE TABLE {quote_identifier(table.name, dialect)} (\n"
+            + ",\n".join(lines)
+            + "\n);"
+        )
+    return "\n\n".join(statements)
+
+
+def schema_to_flow(tables, existing_flow=None):
+    existing_flow = existing_flow or {}
+    existing_positions = {
+        node.get("id"): node.get("position")
+        for node in existing_flow.get("nodes", [])
+        if isinstance(node, dict)
+    }
+    nodes = []
+    edges = []
+    selected_names = {table.name for table in tables}
+
+    for index, table in enumerate(tables):
+        node_id = table.name.lower()
+        position = existing_positions.get(node_id) or {
+            "x": (index % 3) * 360,
+            "y": (index // 3) * 260,
+        }
+        nodes.append({
+            "id": node_id,
+            "type": "tableNode",
+            "position": position,
+            "data": {
+                "tableName": table.name,
+                "columns": [
+                    {
+                        "name": column.name,
+                        "type": column_type_sql(column, ""),
+                        "isPrimaryKey": column.is_primary_key,
+                        "isForeignKey": bool(column.foreign_key),
+                        "nullable": column.is_nullable,
+                        "defaultValue": column.default_value,
+                        "references": column.foreign_key,
+                    }
+                    for column in table.columns
+                ],
+            },
+        })
+
+        for column in table.columns:
+            if not column.foreign_key or column.foreign_key.get("table") not in selected_names:
+                continue
+            parent_table = column.foreign_key["table"]
+            parent_column = column.foreign_key["column"]
+            edges.append({
+                "id": f"rel-{node_id}-{column.name}-{parent_table.lower()}-{parent_column}",
+                "source": node_id,
+                "sourceHandle": f"{column.name}-source",
+                "target": parent_table.lower(),
+                "targetHandle": f"{parent_column}-target",
+                "type": "relationship",
+                "animated": False,
+                "label": "N:1",
+                "data": {
+                    "cardinality": "many-to-one",
+                    "sourceCardinality": "N",
+                    "targetCardinality": "1",
+                    "sourceColumn": column.name,
+                    "targetColumn": parent_column,
+                },
+            })
+
+    flow = {"nodes": nodes, "edges": edges}
+    if existing_flow.get("viewport"):
+        flow["viewport"] = existing_flow["viewport"]
+    return flow
+
+
+def introspect_selected_schema(connection: ConexionRequest, selected_tables: List[str], strict=True):
+    with get_connector(connection) as connector:
+        full_schema = analyze_schema(connector)
+    if full_schema.motor not in {"postgresql", "mysql", "sqlserver"}:
+        raise HTTPException(
+            status_code=400,
+            detail="ER SQL diagrams currently support PostgreSQL, MySQL and SQL Server.",
+        )
+    selected = set(selected_tables)
+    tables = [table for table in full_schema.tables if table.name in selected]
+    missing = selected.difference(table.name for table in tables)
+    if strict and missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Tables not found in database: {', '.join(sorted(missing))}",
+        )
+    return full_schema, tables
 
 router = APIRouter(tags=["ER Diagrams"])
 
@@ -132,15 +272,10 @@ def get_diagram(diagram_id: int, db: Session = Depends(get_db)):
 
 @router.post("/diagrams", response_model=DiagramResponse)
 def create_diagram(req: DiagramCreate, db: Session = Depends(get_db)):
-    diagram = Diagram(
-        name=req.name, 
-        schema_json=req.schema_json, 
-        project_id=req.project_id
+    raise HTTPException(
+        status_code=400,
+        detail="Diagrams must be generated from a database connection.",
     )
-    db.add(diagram)
-    db.commit()
-    db.refresh(diagram)
-    return diagram
 
 @router.patch("/diagrams/{diagram_id}", response_model=DiagramResponse)
 def update_diagram(diagram_id: int, req: DiagramUpdate, db: Session = Depends(get_db)):
@@ -150,12 +285,11 @@ def update_diagram(diagram_id: int, req: DiagramUpdate, db: Session = Depends(ge
     
     if req.name is not None:
         diagram.name = req.name
-    if req.schema_json is not None:
-        diagram.schema_json = req.schema_json
-    if req.sql_content is not None:
-        diagram.sql_content = req.sql_content
-    if req.active_dialect is not None:
-        diagram.active_dialect = req.active_dialect
+    if req.schema_json is not None or req.sql_content is not None or req.active_dialect is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="Database-derived diagram structure is read-only. Refresh it from the database instead.",
+        )
         
     db.commit()
     db.refresh(diagram)
@@ -179,57 +313,19 @@ def generate_diagram_from_db(req: GenerateDiagramRequest, projectId: int = Query
         raise HTTPException(status_code=404, detail="Project not found")
 
     try:
-        with get_connector(req.connection) as connector:
-            full_schema = analyze_schema(connector)
-            
-        selected_tables = [t for t in full_schema.tables if t.name in req.selected_tables]
-        
-        nodes = []
-        edges = []
-        y_offset = 0
-        x_offset = 0
-        
-        for idx, table in enumerate(selected_tables):
-            node_id = table.name
-            nodes.append({
-                "id": node_id,
-                "type": "table",
-                "position": {"x": x_offset, "y": y_offset},
-                "data": {
-                    "name": table.name,
-                    "columns": [
-                        {
-                            "name": col.name,
-                            "type": col.data_type,
-                            "isPrimary": col.is_primary_key,
-                            "isForeign": bool(col.foreign_key)
-                        } for col in table.columns
-                    ]
-                }
-            })
-            
-            x_offset += 350
-            if (idx + 1) % 3 == 0:
-                x_offset = 0
-                y_offset += 400
-                
-            for col in table.columns:
-                if col.foreign_key and col.foreign_key.get("table") in req.selected_tables:
-                    edges.append({
-                        "id": f"e-{col.foreign_key['table']}-{table.name}-{col.name}",
-                        "source": col.foreign_key["table"],
-                        "target": table.name,
-                        "type": "smoothstep",
-                        "animated": True,
-                        "label": "1:N"
-                    })
-                    
-        flow_json = json.dumps({"nodes": nodes, "edges": edges})
+        full_schema, selected_tables = introspect_selected_schema(req.connection, req.selected_tables)
+        dialect = full_schema.motor if full_schema.motor in {"postgresql", "mysql", "sqlserver"} else "json"
+        flow_json = json.dumps(schema_to_flow(selected_tables))
         
         diagram = Diagram(
             name=req.name,
             schema_json=flow_json,
-            project_id=projectId
+            sql_content=schema_to_sql(selected_tables, dialect),
+            active_dialect=dialect,
+            source_database=f"{full_schema.motor}:{full_schema.database_name}",
+            selected_tables_json=json.dumps(req.selected_tables),
+            last_synced_at=datetime.utcnow(),
+            project_id=projectId,
         )
         db.add(diagram)
         db.commit()
@@ -237,7 +333,54 @@ def generate_diagram_from_db(req: GenerateDiagramRequest, projectId: int = Query
         return diagram
         
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/diagrams/{diagram_id}/refresh", response_model=DiagramResponse)
+def refresh_diagram(diagram_id: int, req: RefreshDiagramRequest, db: Session = Depends(get_db)):
+    diagram = db.query(Diagram).filter(Diagram.id == diagram_id).first()
+    if not diagram:
+        raise HTTPException(status_code=404, detail="Diagram not found")
+    selected_tables = json.loads(diagram.selected_tables_json or "[]")
+    if not selected_tables:
+        raise HTTPException(status_code=400, detail="Diagram has no source tables configured")
+
+    try:
+        existing_flow = json.loads(diagram.schema_json or "{}")
+        full_schema, tables = introspect_selected_schema(req.connection, selected_tables, strict=False)
+        dialect = full_schema.motor if full_schema.motor in {"postgresql", "mysql", "sqlserver"} else "json"
+        diagram.schema_json = json.dumps(schema_to_flow(tables, existing_flow))
+        diagram.sql_content = schema_to_sql(tables, dialect)
+        diagram.active_dialect = dialect
+        diagram.source_database = f"{full_schema.motor}:{full_schema.database_name}"
+        diagram.selected_tables_json = json.dumps([table.name for table in tables])
+        diagram.last_synced_at = datetime.utcnow()
+        db.commit()
+        db.refresh(diagram)
+        return diagram
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.patch("/diagrams/{diagram_id}/layout", response_model=DiagramResponse)
+def update_diagram_layout(diagram_id: int, req: DiagramLayoutUpdate, db: Session = Depends(get_db)):
+    diagram = db.query(Diagram).filter(Diagram.id == diagram_id).first()
+    if not diagram:
+        raise HTTPException(status_code=404, detail="Diagram not found")
+    flow = json.loads(diagram.schema_json or "{}")
+    for node in flow.get("nodes", []):
+        if node.get("id") in req.positions:
+            node["position"] = req.positions[node["id"]]
+    if req.viewport is not None:
+        flow["viewport"] = req.viewport
+    diagram.schema_json = json.dumps(flow)
+    db.commit()
+    db.refresh(diagram)
+    return diagram
 
 
 def get_project_diagram(project_id: int, db: Session) -> Diagram:

@@ -35,7 +35,14 @@ def test_connection(
     try:
         connector = get_connector(req)
         result = connector.test_connection()
+        if not result.get("success"):
+            raise HTTPException(
+                status_code=400,
+                detail=result.get("error", "No se pudo conectar a la base de datos."),
+            )
         return result
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
