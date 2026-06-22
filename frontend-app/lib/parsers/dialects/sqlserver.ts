@@ -83,12 +83,14 @@ export function parseSQLServer(ddl: string): ParseResult {
             references = { table: refTable, column: refCol }
 
             result.edges.push({
-              id: `fk-${id}-${refTable.toLowerCase()}`,
+              id: `rel-${id}-${colName}-${refTable.toLowerCase()}-${refCol}`,
               source: id,
+              sourceHandle: `${colName}-source`,
               target: refTable.toLowerCase(),
-              type: 'smoothstep',
+              targetHandle: `${refCol}-target`,
+              type: 'relationship',
               animated: false,
-              style: { stroke: '#00D4FF' }
+              style: { stroke: '#1A6CF6', strokeWidth: 1.5 }
             })
           }
 
@@ -139,12 +141,14 @@ export function parseSQLServer(ddl: string): ParseResult {
       }
 
       result.edges.push({
-        id: `fk-${sourceTable}-${targetTable}`,
+        id: `rel-${sourceTable}-${sourceCol}-${targetTable}-${targetCol}`,
         source: sourceTable,
+        sourceHandle: `${sourceCol}-source`,
         target: targetTable,
-        type: 'smoothstep',
+        targetHandle: `${targetCol}-target`,
+        type: 'relationship',
         animated: false,
-        style: { stroke: '#00D4FF' }
+        style: { stroke: '#1A6CF6', strokeWidth: 1.5 }
       })
     }
 

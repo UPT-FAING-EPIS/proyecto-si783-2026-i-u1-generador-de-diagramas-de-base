@@ -13,9 +13,10 @@ import { GitCommit } from 'lucide-react'
 
 interface CommitModalProps {
   projectId: string
+  asToolbarButton?: boolean
 }
 
-export function CommitModal({ projectId }: CommitModalProps) {
+export function CommitModal({ projectId, asToolbarButton }: CommitModalProps) {
   const [open, setOpen] = useState(false)
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
@@ -50,14 +51,21 @@ export function CommitModal({ projectId }: CommitModalProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900"
-        >
-          <GitCommit className="w-4 h-4 mr-2 text-[#1A6CF6]" />
-          Commit
-        </Button>
+        {asToolbarButton ? (
+          <button className="flex min-w-20 flex-col items-center gap-1 border-r border-[#1E2A45] px-3 py-2 text-[11px] last:border-r-0 text-[#94A3B8] hover:text-white">
+            <GitCommit size={15} />
+            Commit
+          </button>
+        ) : (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="bg-[#0B1322] border-[#1E2A45] text-[#94A3B8] hover:bg-[#111827] hover:text-white"
+          >
+            <GitCommit className="w-4 h-4 mr-2 text-[#1A6CF6]" />
+            Commit
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="bg-white border-slate-200 text-slate-900 sm:max-w-[425px]">
         <motion.div

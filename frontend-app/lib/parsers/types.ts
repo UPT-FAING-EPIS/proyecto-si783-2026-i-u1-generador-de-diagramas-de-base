@@ -6,7 +6,7 @@ export interface ParseResult {
 
 export interface FlowNode {
   id: string
-  type: 'tableNode'
+  type: 'tableNode' | 'nosqlNode'
   position: { x: number; y: number }
   data: {
     tableName: string
@@ -25,6 +25,8 @@ export interface Column {
   }
   isAutoIncrement?: boolean
   isIdentity?: boolean
+  isArray?: boolean
+  subFields?: Column[]
 }
 
 export interface FlowEdge {
@@ -33,9 +35,10 @@ export interface FlowEdge {
   target: string
   sourceHandle?: string
   targetHandle?: string
-  type: 'smoothstep'
+  type: 'smoothstep' | 'relationship'
   animated: boolean
-  style: { stroke: string }
+  style: { stroke: string; strokeWidth?: number }
+  label?: string
 }
 
 export interface ParseError {

@@ -5,16 +5,27 @@ import { ReactFlow, Background, MiniMap, MarkerType, useReactFlow, type Node, ty
 import '@xyflow/react/dist/style.css'
 import { useEditorStore } from '@/store/useEditorStore'
 import { TableNode } from './nodes/TableNode'
+import { NoSqlNode } from './nodes/NoSqlNode'
+import { MongoNode } from './nodes/MongoNode'
+import { Neo4jNode } from './nodes/Neo4jNode'
 import { RelationshipEdge } from './edges/RelationshipEdge'
-import { Eye, GitBranch, Grid3X3, Maximize2, MoreHorizontal, Rows3 } from 'lucide-react'
+import { Neo4jEdge } from './edges/Neo4jEdge'
+import { applyForceLayout } from '@/lib/parsers/utils/forceLayout'
+import { calculateCircularLayout } from '@/lib/parsers/utils/layout'
+import { Eye, GitBranch, Grid3X3, Maximize2, MoreHorizontal, Rows3, Save } from 'lucide-react'
+import { CommitModal } from './CommitModal'
 
 // CRITICAL: nodeTypes and edgeTypes MUST be defined outside the component
 const nodeTypes = {
   tableNode: TableNode,
+  nosqlNode: NoSqlNode,
+  mongoNode: MongoNode,
+  neo4jNode: Neo4jNode,
 }
 
 const edgeTypes = {
   relationship: RelationshipEdge,
+  neo4jEdge: Neo4jEdge,
 }
 
 const DEMO_NODES: Node[] = [
@@ -68,18 +79,74 @@ const DEMO_EDGES: Edge[] = [
 ]
 
 interface CanvasProps {
-  emitNodeMove?: (nodeId: string, position: { x: number, y: number }) => void
+  emitNodeMove?: (nodeId: string, position: { x: number; y: number }) => void
+  projectId?: string
+  onSave?: () => void
 }
 
-export function Canvas({ emitNodeMove }: CanvasProps = {}) {
-  const { fitView, setCenter } = useReactFlow()
+export function Canvas({ emitNodeMove, projectId, onSave }: CanvasProps) {
+  const { fitView } = useReactFlow()
   const [showGrid, setShowGrid] = useState(true)
-  const { nodes, edges, hoveredNodeId, onNodesChange, onEdgesChange, setNodesAndEdges, setSelectedNodeId, setHoveredNodeId } = useEditorStore()
+  const { nodes, edges, hoveredNodeId, dialect, onNodesChange, onEdgesChange, setNodesAndEdges, setSelectedNodeId, setHoveredNodeId, neo4jFilterLabel, neo4jFilterRelationship } = useEditorStore()
+
+  const isNeo4j = dialect === 'neo4j'
+
+  // ── Neo4j Filters ──────────────────────────────────────────
+  
+  // 1. Filter edges first based on relationship filter
+  const filteredEdges = isNeo4j
+    ? (neo4jFilterRelationship 
+        // If a specific relationship is selected, show only those edges
+        ? edges.filter(e => {
+            const relType = (e.data as { relType?: string })?.relType ?? e.label
+            return relType === neo4jFilterRelationship
+          })
+        // If asterisk or label is selected, hide ALL edges
+        : [])
+    : edges
+
+  // 2. Filter nodes based on active filters
+  const filteredNodes = useMemo(() => {
+    if (!isNeo4j) return nodes
+
+    if (neo4jFilterRelationship) {
+      // Show only nodes connected by the filtered edges
+      const connectedIds = new Set<string>()
+      filteredEdges.forEach(e => {
+        connectedIds.add(e.source)
+        connectedIds.add(e.target)
+      })
+      return nodes.filter(n => connectedIds.has(n.id))
+    }
+
+    if (neo4jFilterLabel) {
+      // Show only nodes of the specific label
+      return nodes.filter(n => {
+        const label = (n.data as { tableName?: string })?.tableName ?? ''
+        return label.toLowerCase() === neo4jFilterLabel.toLowerCase()
+      })
+    }
+
+    // Asterisk active: show all nodes
+    return nodes
+  }, [isNeo4j, nodes, filteredEdges, neo4jFilterRelationship, neo4jFilterLabel])
 
   const visibleEdges = useMemo(() => {
-    if (!hoveredNodeId) return edges
-    return edges.map((edge) => {
+    const baseEdges = filteredEdges
+    if (!hoveredNodeId) return baseEdges
+    return baseEdges.map((edge) => {
       const active = edge.source === hoveredNodeId || edge.target === hoveredNodeId
+      if (isNeo4j) {
+        return {
+          ...edge,
+          style: {
+            ...edge.style,
+            stroke: active ? '#aaa' : '#555',
+            strokeWidth: active ? 2 : 1,
+            opacity: active ? 1 : 0.35,
+          },
+        }
+      }
       return {
         ...edge,
         animated: active,
@@ -91,7 +158,7 @@ export function Canvas({ emitNodeMove }: CanvasProps = {}) {
         },
       }
     })
-  }, [edges, hoveredNodeId])
+  }, [filteredEdges, hoveredNodeId, isNeo4j])
 
   useEffect(() => {
     if (nodes.length === 0) {
@@ -100,10 +167,47 @@ export function Canvas({ emitNodeMove }: CanvasProps = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Dynamic layout applying function
+  const applyNeo4jLayout = () => {
+    if (!isNeo4j || nodes.length === 0) return
+
+    // Apply force layout to naturally cluster nodes (with or without edges)
+    const posMap = applyForceLayout(filteredNodes, filteredEdges, 780, 560)
+    
+    const laid = nodes.map(n => ({
+      ...n,
+      position: posMap.get(n.id) ?? n.position,
+    }))
+
+    setNodesAndEdges(laid, edges)
+    window.setTimeout(() => fitView({ duration: 400, padding: 0.2 }), 80)
+  }
+
+  // Auto layout on filter change
+  useEffect(() => {
+    if (isNeo4j) {
+      applyNeo4jLayout()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [neo4jFilterRelationship, neo4jFilterLabel, isNeo4j])
+
+  function handleNeo4jAutoLayout() {
+    applyNeo4jLayout()
+  }
+
+  // ─── Canvas background based on dialect ───────────────────
+  const canvasBg = isNeo4j ? '#0F172A' : '#07101F'
+  const canvasGridStyle = isNeo4j
+    ? {} // No dot grid for Neo4j
+    : { backgroundImage: 'radial-gradient(#1E3A5F 1px, transparent 1px)', backgroundSize: '24px 24px' }
+
   return (
-    <div className="relative isolate h-full min-h-0 w-full overflow-hidden bg-[#F8F9FA] [background-image:radial-gradient(#E2E8F0_1px,transparent_1px)] [background-size:24px_24px]">
+    <div
+      className="relative isolate h-full min-h-0 w-full overflow-hidden"
+      style={{ backgroundColor: canvasBg, ...canvasGridStyle }}
+    >
       <ReactFlow
-        nodes={nodes}
+        nodes={filteredNodes}
         edges={visibleEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
@@ -117,23 +221,40 @@ export function Canvas({ emitNodeMove }: CanvasProps = {}) {
         fitView
         deleteKeyCode={null}
         proOptions={{ hideAttribution: true }}
+        style={{ backgroundColor: canvasBg }}
       >
-        {showGrid && <Background color="#CBD5E1" gap={20} size={1} />}
-        <MiniMap
-          pannable
-          zoomable
-          className="!bottom-5 !right-5 !h-28 !w-40 overflow-hidden !rounded-xl !border !border-slate-200 !bg-white"
-          nodeColor="#1A6CF6"
-          maskColor="rgba(248,249,250,0.72)"
-        />
+        {/* Only show grid for non-Neo4j editors */}
+        {showGrid && !isNeo4j && <Background color="#1E2A45" gap={20} size={1} />}
+
+        {/* MiniMap — hide for Neo4j, matches official Neo4j Browser behavior */}
+        {!isNeo4j && (
+          <MiniMap
+            pannable
+            zoomable
+            className="!bottom-5 !right-5 !h-28 !w-40 overflow-hidden !rounded-xl !border !border-[#1E2A45] !bg-[#0D1424]"
+            nodeColor="#1A6CF6"
+            maskColor="rgba(7,16,31,0.72)"
+          />
+        )}
       </ReactFlow>
-      <div className="pointer-events-auto absolute bottom-5 left-1/2 z-30 flex -translate-x-1/2 overflow-hidden rounded-xl border border-slate-200 bg-white/95 shadow-xl shadow-slate-200/50 backdrop-blur">
+
+      {/* Bottom toolbar */}
+      <div className="pointer-events-auto absolute bottom-5 left-1/2 z-30 flex -translate-x-1/2 overflow-hidden rounded-xl border border-[#1E2A45] bg-[#0D1424]/95 shadow-2xl shadow-black/40 backdrop-blur">
         <ToolButton icon={Maximize2} label="Ajustar" onClick={() => fitView({ duration: 350, padding: 0.22 })} />
-        <ToolButton icon={GitBranch} label="Auto-layout" onClick={() => autoLayout(nodes, setNodesAndEdges, fitView)} active />
-        <ToolButton icon={Rows3} label="Alinear" onClick={() => alignRows(nodes, setNodesAndEdges)} />
-        <ToolButton icon={Eye} label="Relaciones" onClick={() => setHoveredNodeId(null)} />
-        <ToolButton icon={Grid3X3} label="Cuadrícula" onClick={() => setShowGrid((value) => !value)} active={showGrid} />
-        <ToolButton icon={MoreHorizontal} label="Más" onClick={() => setCenter(0, 0, { zoom: 1, duration: 300 })} />
+        <ToolButton
+          icon={GitBranch}
+          label="Auto-layout"
+          onClick={() => isNeo4j ? handleNeo4jAutoLayout() : autoLayout(nodes, setNodesAndEdges, fitView)}
+          active
+        />
+        {!isNeo4j && (
+          <>
+            <ToolButton icon={Rows3} label="Alinear" onClick={() => alignRows(nodes, setNodesAndEdges)} />
+            <ToolButton icon={Grid3X3} label="Cuadrícula" onClick={() => setShowGrid((value) => !value)} active={showGrid} />
+          </>
+        )}
+        {projectId && <CommitModal projectId={projectId} asToolbarButton />}
+        {onSave && <ToolButton icon={Save} label="Guardar" onClick={onSave} />}
       </div>
     </div>
   )
@@ -141,7 +262,7 @@ export function Canvas({ emitNodeMove }: CanvasProps = {}) {
 
 function ToolButton({ icon: Icon, label, onClick, active = false }: { icon: React.ElementType; label: string; onClick: () => void; active?: boolean }) {
   return (
-    <button onClick={onClick} className={`flex min-w-20 flex-col items-center gap-1 border-r border-slate-200 px-3 py-2 text-[11px] last:border-r-0 ${active ? 'text-[#1A6CF6]' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}>
+    <button onClick={onClick} className={`flex min-w-20 flex-col items-center gap-1 border-r border-[#1E2A45] px-3 py-2 text-[11px] last:border-r-0 ${active ? 'text-[#60A5FA]' : 'text-[#94A3B8] hover:text-white'}`}>
       <Icon size={15} />
       {label}
     </button>

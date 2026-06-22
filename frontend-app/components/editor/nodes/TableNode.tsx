@@ -22,7 +22,7 @@ export function TableNode({ data }: NodeProps) {
   const accent = color ?? '#1A6CF6'
 
   return (
-    <div className="min-w-[230px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50 backdrop-blur">
+    <div className="min-w-[230px] overflow-hidden rounded-xl border border-[#1E2A45] bg-[#0B1322] shadow-2xl shadow-black/40 backdrop-blur">
       <div className="px-3 py-2" style={{ background: `linear-gradient(135deg, ${accent}, #0F5BEA)` }}>
         <span className="flex items-center gap-2 truncate text-sm font-semibold tracking-wide text-white">
           <Table2 size={14} />
@@ -30,7 +30,7 @@ export function TableNode({ data }: NodeProps) {
         </span>
       </div>
 
-      <div className="divide-y divide-slate-100 bg-white">
+      <div className="divide-y divide-[#1E2A45] bg-[#0B1322]">
         {columns.length === 0 ? (
           <div className="px-3 py-2 text-slate-400 text-xs italic">Sin columnas</div>
         ) : (
@@ -55,9 +55,9 @@ export function TableNode({ data }: NodeProps) {
               )}
 
               {/* Column name */}
-              <span className="text-slate-700 text-xs flex-1 truncate">{col.name}</span>
+              <span className="text-[#E2E8F0] text-xs flex-1 truncate">{col.name}</span>
 
-              <span className="text-slate-500 text-xs shrink-0 font-mono">{col.type}</span>
+              <span className="text-[#94A3B8] text-xs shrink-0 font-mono">{col.type}</span>
 
               {/* Right handle (source) — hidden until hover */}
               <Handle

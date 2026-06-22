@@ -12,6 +12,7 @@ import {
   makeRelationshipEdge,
   makeTableNode,
   serializeSchema,
+  isEditorNode,
   type EditorColumn,
   type EditorDialect,
   type EditorNode,
@@ -32,6 +33,7 @@ interface EditorStore {
   selectedNodeId: string | null
   hoveredNodeId: string | null
   dialect: EditorDialect
+  engineFamily: 'sql' | 'nosql'
   syncPaused: boolean
   onNodesChange: (changes: NodeChange[]) => void
   onEdgesChange: (changes: EdgeChange[]) => void
@@ -39,6 +41,7 @@ interface EditorStore {
   setSelectedNodeId: (nodeId: string | null) => void
   setHoveredNodeId: (nodeId: string | null) => void
   setDialect: (dialect: EditorDialect) => void
+  setEngineFamily: (family: 'sql' | 'nosql') => void
   setSyncPaused: (paused: boolean) => void
   addTable: () => void
   updateTable: (nodeId: string, data: Partial<EditorNode['data']>) => void
@@ -49,7 +52,13 @@ interface EditorStore {
   addRelationship: (sourceId: string, sourceColumn: string, targetId: string, targetColumn: string) => void
   syncSqlFromCanvas: () => void
   sqlValue: string
-  setSqlValue: (value: string) => void
+  setSqlValue: (value: string, isUserEdit?: boolean) => void
+  userEditedSql: boolean
+  setUserEditedSql: (edited: boolean) => void
+  neo4jFilterLabel: string | null
+  setNeo4jFilterLabel: (label: string | null) => void
+  neo4jFilterRelationship: string | null
+  setNeo4jFilterRelationship: (rel: string | null) => void
 }
 
 export const useEditorStore = create<EditorStore>((set) => ({
@@ -58,19 +67,63 @@ export const useEditorStore = create<EditorStore>((set) => ({
   selectedNodeId: null,
   hoveredNodeId: null,
   dialect: 'postgresql',
+  engineFamily: 'sql',
   syncPaused: false,
+  userEditedSql: false,
+  neo4jFilterLabel: null,
+  setNeo4jFilterLabel: (neo4jFilterLabel) => set({ neo4jFilterLabel, neo4jFilterRelationship: null }),
+  neo4jFilterRelationship: null,
+  setNeo4jFilterRelationship: (neo4jFilterRelationship) => set({ neo4jFilterRelationship, neo4jFilterLabel: null }),
+  setUserEditedSql: (userEditedSql) => set({ userEditedSql }),
   onNodesChange: (changes) =>
     set((state) => ({ nodes: applyNodeChanges(changes, state.nodes) })),
   onEdgesChange: (changes) =>
     set((state) => ({ edges: applyEdgeChanges(changes, state.edges) })),
-  setNodesAndEdges: (nodes, edges) => set({ nodes, edges }),
+  setNodesAndEdges: (nodes, edges) => set({ nodes, edges, userEditedSql: false }),
   setSelectedNodeId: (selectedNodeId) => set({ selectedNodeId }),
   setHoveredNodeId: (hoveredNodeId) => set({ hoveredNodeId }),
-  setDialect: (dialect) => set((state) => ({ dialect, sqlValue: serializeSchema(state.nodes, dialect) || state.sqlValue, syncPaused: true })),
+  setDialect: (dialect) => set((state) => {
+    // Si cambiamos de dialecto, actualizamos los tipos de nodo para que coincidan con la vista
+    const newNodes = state.nodes.map(node => {
+      if (!isEditorNode(node)) return node
+      const newNodeType = 
+        dialect === 'mongodb' ? 'mongoNode' :
+        dialect === 'neo4j' ? 'neo4jNode' :
+        dialect === 'json' ? 'nosqlNode' : 'tableNode'
+      
+      return { ...node, type: newNodeType }
+    })
+
+    const newEdges = state.edges.map(edge => {
+      return { 
+        ...edge, 
+        type: dialect === 'neo4j' ? 'neo4jEdge' : 'relationship' 
+      }
+    })
+    
+    return { 
+      dialect, 
+      nodes: newNodes,
+      edges: newEdges,
+      sqlValue: serializeSchema(newNodes, dialect) || state.sqlValue, 
+      syncPaused: true, 
+      userEditedSql: false,
+      neo4jFilterLabel: null,  // reset filter when switching dialect
+      neo4jFilterRelationship: null,
+    }
+  }),
+  setEngineFamily: (engineFamily) => set({ engineFamily }),
   setSyncPaused: (syncPaused) => set({ syncPaused }),
   addTable: () =>
     set((state) => {
       const node = makeTableNode(state.nodes.length + 1)
+      const newNodeType = 
+        state.dialect === 'mongodb' ? 'mongoNode' :
+        state.dialect === 'neo4j' ? 'neo4jNode' :
+        state.dialect === 'json' ? 'nosqlNode' : 'tableNode'
+      
+      node.type = newNodeType
+
       return {
         nodes: [...state.nodes, node],
         selectedNodeId: node.id,
@@ -168,9 +221,9 @@ export const useEditorStore = create<EditorStore>((set) => ({
       const edges = [...state.edges.filter((item) => item.id !== edge.id), edge]
       return { nodes, edges, sqlValue: serializeSchema(nodes, state.dialect) }
     }),
-  syncSqlFromCanvas: () => set((state) => ({ sqlValue: serializeSchema(state.nodes, state.dialect) })),
+  syncSqlFromCanvas: () => set((state) => ({ sqlValue: serializeSchema(state.nodes, state.dialect), userEditedSql: false })),
   sqlValue: SQL_PLACEHOLDER,
-  setSqlValue: (value) => set({ sqlValue: value }),
+  setSqlValue: (value, isUserEdit = true) => set({ sqlValue: value, userEditedSql: isUserEdit }),
 }))
 
 /**
@@ -178,6 +231,18 @@ export const useEditorStore = create<EditorStore>((set) => ({
  * Call this when converting ParseResult.edges → React Flow edges.
  */
 export function toReactFlowEdge(edge: Edge): Edge {
+  if (edge.type === 'neo4jEdge') {
+    return {
+      ...edge,
+      markerEnd: edge.markerEnd ?? {
+        type: MarkerType.ArrowClosed,
+        width: 14,
+        height: 14,
+        color: '#71717A',
+      },
+    }
+  }
+
   return {
     ...edge,
     type: 'relationship',

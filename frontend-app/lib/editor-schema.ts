@@ -1,6 +1,6 @@
 import { MarkerType, type Edge, type Node } from '@xyflow/react'
 
-export type EditorDialect = 'postgresql' | 'mysql' | 'sqlserver' | 'json'
+export type EditorDialect = 'postgresql' | 'mysql' | 'sqlserver' | 'json' | 'mongodb' | 'neo4j'
 
 export type EditorColumn = {
   name: string
@@ -22,13 +22,13 @@ export type EditorTableData = {
   color?: string
 }
 
-export type EditorNode = Node<EditorTableData, 'tableNode'>
+export type EditorNode = Node<EditorTableData, 'tableNode' | 'nosqlNode' | 'mongoNode' | 'neo4jNode'>
 
 export const DEFAULT_TABLE_COLOR = '#1A6CF6'
 
 export function isEditorNode(node: Node): node is EditorNode {
   return (
-    node.type === 'tableNode' &&
+    (node.type === 'tableNode' || node.type === 'nosqlNode' || node.type === 'mongoNode' || node.type === 'neo4jNode') &&
     typeof node.data?.tableName === 'string' &&
     Array.isArray(node.data?.columns)
   )
@@ -114,6 +114,51 @@ export function serializeSchema(nodes: Node[], dialect: EditorDialect) {
     return JSON.stringify(json, null, 2)
   }
 
+  if (dialect === 'mongodb') {
+    return tables.map((table) => {
+      const collectionName = table.data.tableName
+      const fields = table.data.columns.map((column) => {
+        let typeStr = column.type || 'String'
+        if (typeStr.toUpperCase() === 'VARCHAR' || typeStr.toUpperCase() === 'TEXT') typeStr = 'String'
+        if (typeStr.toUpperCase() === 'INT' || typeStr.toUpperCase() === 'INTEGER') typeStr = 'Number'
+        if (typeStr.toUpperCase() === 'BOOLEAN') typeStr = 'Boolean'
+        if (typeStr.toUpperCase() === 'DATETIME' || typeStr.toUpperCase() === 'TIMESTAMP') typeStr = 'Date'
+        
+        let fieldDef = `type: ${typeStr}`
+        if (column.references?.table) {
+          fieldDef = `type: Schema.Types.ObjectId, ref: '${column.references.table}'`
+        }
+        
+        const isRequired = column.nullable === false && !column.isPrimaryKey ? `, required: true` : ''
+        
+        if (column.isPrimaryKey && column.name === '_id') {
+          return null // _id is implicit in mongoose
+        }
+        
+        return `  ${column.name}: { ${fieldDef}${isRequired} }`
+      }).filter(Boolean)
+
+      return `const ${collectionName}Schema = new mongoose.Schema({\n${fields.join(',\n')}\n});\n\nconst ${collectionName} = mongoose.model('${collectionName}', ${collectionName}Schema);`
+    }).join('\n\n')
+  }
+
+  if (dialect === 'neo4j') {
+    return tables.map((table) => {
+      const label = table.data.tableName
+      const props = table.data.columns
+        .filter(c => !c.references) // Ignorar FKs puras, en Neo4j son relaciones
+        .map(c => `${c.name}: "${c.type}"`)
+      
+      const createNode = `CREATE (n:${label} { ${props.join(', ')} });`
+      
+      const relationships = table.data.columns
+        .filter(c => c.references?.table)
+        .map(c => `MATCH (a:${label}), (b:${c.references?.table})\nCREATE (a)-[:RELATES_TO]->(b);`)
+        
+      return [createNode, ...relationships].join('\n')
+    }).join('\n\n')
+  }
+
   return tables.map((table) => {
     const tableName = quoteIdentifier(table.data.tableName, dialect)
     const primaryKeys = table.data.columns.filter((column) => column.isPrimaryKey).map((column) => quoteIdentifier(column.name, dialect))
@@ -148,6 +193,8 @@ export function serializeAllDialects(nodes: Node[]) {
     mysql: serializeSchema(nodes, 'mysql'),
     sqlserver: serializeSchema(nodes, 'sqlserver'),
     json: serializeSchema(nodes, 'json'),
+    mongodb: serializeSchema(nodes, 'mongodb'),
+    neo4j: serializeSchema(nodes, 'neo4j'),
   }
 }
 

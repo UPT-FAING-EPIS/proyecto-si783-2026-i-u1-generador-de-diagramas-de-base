@@ -6,6 +6,8 @@ import { ArrowLeft, Braces, CheckCircle2, Code2, Database, FileJson, GitBranch, 
 import { toast } from 'sonner'
 import { Canvas } from './Canvas'
 import { EditorPanel } from './EditorPanel'
+import { Neo4jSidebar } from './Neo4jSidebar'
+import { Neo4jCommandBar } from './Neo4jCommandBar'
 import { EditorInspector } from './EditorInspector'
 import { ExportMenu } from './ExportMenu'
 import { CommitModal } from './CommitModal'
@@ -35,11 +37,13 @@ interface EditorLayoutProps {
   initialShareAccess?: 'view' | 'edit'
 }
 
-const DIALECTS: Array<{ value: EditorDialect; label: string; icon: ElementType }> = [
-  { value: 'postgresql', label: 'PostgreSQL', icon: Database },
-  { value: 'mysql', label: 'MySQL', icon: Database },
-  { value: 'sqlserver', label: 'SQL Server', icon: Database },
-  { value: 'json', label: 'JSON', icon: FileJson },
+const DIALECTS: Array<{ value: EditorDialect; label: string; icon: ElementType; family: 'sql' | 'nosql' }> = [
+  { value: 'postgresql', label: 'PostgreSQL', icon: Database, family: 'sql' },
+  { value: 'mysql', label: 'MySQL', icon: Database, family: 'sql' },
+  { value: 'sqlserver', label: 'SQL Server', icon: Database, family: 'sql' },
+  { value: 'json', label: 'JSON', icon: FileJson, family: 'nosql' },
+  { value: 'mongodb', label: 'MongoDB', icon: Database, family: 'nosql' },
+  { value: 'neo4j', label: 'Neo4j', icon: Database, family: 'nosql' },
 ]
 
 function EditorLayoutInner({
@@ -58,7 +62,9 @@ function EditorLayoutInner({
   const edges = useEditorStore((state) => state.edges)
   const sqlValue = useEditorStore((state) => state.sqlValue)
   const mode = useEditorStore((state) => state.dialect)
+  const engineFamily = useEditorStore((state) => state.engineFamily)
   const setDialect = useEditorStore((state) => state.setDialect)
+  const setEngineFamily = useEditorStore((state) => state.setEngineFamily)
   const setSqlValue = useEditorStore((state) => state.setSqlValue)
   const setNodesAndEdges = useEditorStore((state) => state.setNodesAndEdges)
   const addTable = useEditorStore((state) => state.addTable)
@@ -74,9 +80,14 @@ function EditorLayoutInner({
   const stats = getSchemaStats(nodes, edges)
 
   useEffect(() => {
+    document.body.style.overflow = 'hidden'
     setDialect((dialect as EditorDialect) || 'postgresql')
     if (initialSQL) setSqlValue(initialSQL)
     if (initialNodes.length > 0) setNodesAndEdges(initialNodes, initialEdges)
+    
+    return () => {
+      document.body.style.overflow = ''
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -160,16 +171,21 @@ function EditorLayoutInner({
     toast.info('Mostrando todas las relaciones del diagrama.')
   }
 
-  const editorGridClass = showSqlPanel && showInspector
-    ? 'grid-cols-[34%_1fr_320px]'
-    : showSqlPanel
-      ? 'grid-cols-[34%_1fr]'
-      : showInspector
-        ? 'grid-cols-[1fr_320px]'
-        : 'grid-cols-[1fr]'
+  // Neo4j uses a fixed layout: [300px sidebar | flex-1 canvas area | 300px inspector]
+  // Other editors use the original responsive grid
+  const isNeo4j = mode === 'neo4j'
+  const editorGridClass = isNeo4j
+    ? (showInspector ? 'grid-cols-[280px_1fr_300px]' : 'grid-cols-[280px_1fr]')
+    : showSqlPanel && showInspector
+      ? 'grid-cols-[34%_1fr_320px]'
+      : showSqlPanel
+        ? 'grid-cols-[34%_1fr]'
+        : showInspector
+          ? 'grid-cols-[1fr_320px]'
+          : 'grid-cols-[1fr]'
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#07101F] text-white" onMouseMove={handleMouseMove}>
+    <div className="flex h-full w-full flex-1 overflow-hidden bg-[#07101F] text-white" onMouseMove={handleMouseMove}>
       <aside className="flex w-14 shrink-0 flex-col items-center border-r border-[#1E2A45] bg-[#0B1322] py-4">
         <Database className="mb-7 h-5 w-5 text-[#B6C7E3]" />
         <NavButton icon={Code2} active={showSqlPanel} label="Mostrar u ocultar SQL" onClick={() => setShowSqlPanel((value) => !value)} />
@@ -188,17 +204,36 @@ function EditorLayoutInner({
           <span className="text-[#334155]">/</span>
           <h1 className="max-w-52 truncate text-sm font-semibold">{projectName}</h1>
 
-          <div className="mx-auto flex rounded-xl border border-[#1E2A45] bg-[#0A0F1E] p-1">
-            {DIALECTS.map(({ value, label, icon: Icon }) => (
+          <div className="mx-auto flex items-center gap-3">
+            <div className="flex rounded-xl border border-[#1E2A45] bg-[#0A0F1E] p-1">
               <button
-                key={value}
-                onClick={() => setDialect(value)}
-                className={`flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs transition ${mode === value ? 'bg-[#123A79] text-[#BFDBFE]' : 'text-[#64748B] hover:text-white'}`}
+                onClick={() => { setEngineFamily('sql'); setDialect('postgresql') }}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition ${engineFamily === 'sql' ? 'bg-[#1A6CF6] text-white shadow-sm' : 'text-[#64748B] hover:text-white'}`}
               >
-                <Icon size={13} />
-                {label}
+                SQL
               </button>
-            ))}
+              <button
+                onClick={() => { setEngineFamily('nosql'); setDialect('mongodb') }}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition ${engineFamily === 'nosql' ? 'bg-[#1A6CF6] text-white shadow-sm' : 'text-[#64748B] hover:text-white'}`}
+              >
+                NoSQL
+              </button>
+            </div>
+            
+            <div className="h-5 w-px bg-[#1E2A45]" />
+            
+            <div className="flex rounded-xl border border-[#1E2A45] bg-[#0A0F1E] p-1">
+              {DIALECTS.filter(d => d.family === engineFamily).map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => setDialect(value)}
+                  className={`flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-medium transition ${mode === value ? 'bg-[#123A79] text-[#BFDBFE]' : 'text-[#64748B] hover:text-white'}`}
+                >
+                  <Icon size={13} />
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="hidden items-center gap-2 text-xs text-[#C7D2FE] lg:flex">
@@ -213,46 +248,72 @@ function EditorLayoutInner({
         </header>
 
         <section className={`grid min-h-0 flex-1 ${editorGridClass}`}>
-          {showSqlPanel && <div className="flex min-w-0 flex-col border-r border-[#1E2A45] bg-[#0B1322]">
-            <div className="flex h-11 items-center gap-2 border-b border-[#1E2A45] px-3">
-              <button onClick={syncSqlFromCanvas} className="rounded-lg border border-[#1E2A45] bg-[#111827] px-3 py-1.5 text-xs text-[#94A3B8] hover:text-white">
-                Formatear
-              </button>
-              <button onClick={handleValidate} className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300">
-                Validar
-              </button>
-              <button onClick={() => toast.info('El editor ya sincroniza el esquema en vivo.')} className="rounded-lg bg-[#123A79] px-3 py-1.5 text-xs text-[#BFDBFE]">
-                <Play className="mr-1 inline h-3 w-3" />
-                Ejecutar
-              </button>
-              <button onClick={addTable} className="ml-auto rounded-lg border border-[#1E2A45] p-1.5 text-[#94A3B8] hover:text-white" title="Agregar tabla visual">
-                <Plus size={15} />
-              </button>
-            </div>
-            <EditorPanel mode={mode} emitSqlChange={emitSqlChange} />
-            <div className="border-t border-[#1E2A45] bg-[#0D1424] p-3">
-              <div className={`rounded-xl border p-3 text-sm ${stats.warnings ? 'border-amber-500/30 bg-amber-500/10 text-amber-200' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'}`}>
-                <CheckCircle2 className="mr-2 inline h-4 w-4" />
-                {stats.warnings ? `${stats.warnings} advertencia(s) por revisar.` : 'Todo listo. No se encontraron errores.'}
-                <span className="ml-2 text-xs text-[#94A3B8]">{stats.tables} tablas · {stats.relations} relaciones</span>
+
+          {/* ── NEO4J LAYOUT: Database Info | Command Bar + Canvas | Inspector ── */}
+          {isNeo4j ? (
+            <>
+              {/* Left: Database Information panel */}
+              <Neo4jSidebar />
+
+              {/* Center: Cypher command bar on TOP + Graph canvas BELOW */}
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col" style={{ background: '#0F172A' }}>
+                {/* Command bar with Monaco Cypher editor */}
+                <Neo4jCommandBar emitSqlChange={emitSqlChange} />
+
+                {/* Graph canvas — occupies the remaining vertical space */}
+                <div className="relative min-h-0 flex-1">
+                  <Canvas emitNodeMove={emitNodeMove} projectId={projectId} onSave={handleSave} />
+                </div>
               </div>
-            </div>
-          </div>}
 
-          <div className="relative min-w-0">
-            <div className="absolute left-5 top-5 z-10 grid grid-cols-3 gap-2">
-              <Metric label="Tablas" value={stats.tables} />
-              <Metric label="Relaciones" value={stats.relations} />
-              <Metric label="Advertencias" value={stats.warnings} />
-            </div>
-            <Canvas emitNodeMove={emitNodeMove} />
-            <button onClick={handleSave} className="absolute bottom-5 left-5 z-10 rounded-xl bg-[#1A6CF6] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[#1A6CF6]/30">
-              <Save className="mr-2 inline h-4 w-4" />
-              Guardar
-            </button>
-          </div>
+              {/* Right: Neo4j Inspector (Property Keys) */}
+              {showInspector && <EditorInspector />}
+            </>
+          ) : (
+            /* ── ALL OTHER DIALECTS: original 3-column layout ── */
+            <>
+              {showSqlPanel && (
+                <div className="flex h-full min-w-0 flex-col border-r border-[#1E2A45] bg-[#0B1322]">
+                  <div className="flex h-11 shrink-0 items-center gap-2 border-b border-[#1E2A45] px-3">
+                    <button onClick={syncSqlFromCanvas} className="rounded-lg border border-[#1E2A45] bg-[#111827] px-3 py-1.5 text-xs text-[#94A3B8] hover:text-white">
+                      Formatear
+                    </button>
+                    <button onClick={handleValidate} className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300">
+                      Validar
+                    </button>
+                    <button onClick={() => toast.info('El editor ya sincroniza el esquema en vivo.')} className="rounded-lg bg-[#123A79] px-3 py-1.5 text-xs text-[#BFDBFE]">
+                      <Play className="mr-1 inline h-3 w-3" />
+                      Ejecutar
+                    </button>
+                    <button onClick={addTable} className="ml-auto rounded-lg border border-[#1E2A45] p-1.5 text-[#94A3B8] hover:text-white" title={engineFamily === 'nosql' ? 'Agregar Colección' : 'Agregar tabla visual'}>
+                      <Plus size={15} />
+                    </button>
+                  </div>
+                  <div className="flex-1 min-h-0">
+                    <EditorPanel mode={mode} emitSqlChange={emitSqlChange} />
+                  </div>
+                  <div className="shrink-0 border-t border-[#1E2A45] bg-[#0D1424] p-3">
+                    <div className={`rounded-xl border p-3 text-sm ${stats.warnings ? 'border-amber-500/30 bg-amber-500/10 text-amber-200' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'}`}>
+                      <CheckCircle2 className="mr-2 inline h-4 w-4" />
+                      {stats.warnings ? `${stats.warnings} advertencia(s) por revisar.` : 'Todo listo. No se encontraron errores.'}
+                      <span className="ml-2 text-xs text-[#94A3B8]">{stats.tables} tablas · {stats.relations} relaciones</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-          {showInspector && <EditorInspector />}
+              <div className="relative flex h-full min-w-0 flex-1 flex-col">
+                <div className="absolute left-5 top-5 z-10 grid grid-cols-3 gap-2">
+                  <Metric label="Tablas" value={stats.tables} />
+                  <Metric label="Relaciones" value={stats.relations} />
+                  <Metric label="Advertencias" value={stats.warnings} />
+                </div>
+                <Canvas emitNodeMove={emitNodeMove} projectId={projectId} onSave={handleSave} />
+              </div>
+
+              {showInspector && <EditorInspector />}
+            </>
+          )}
         </section>
       </main>
 

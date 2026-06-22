@@ -6,8 +6,10 @@ import { parseSQL, parseJSON } from '@/lib/parsers'
 import { useEditorStore, toReactFlowEdge } from '@/store/useEditorStore'
 import { useDebounce } from './useDebounce'
 
+import type { EditorDialect } from '@/lib/editor-schema'
+
 export function useSyncEditor(
-  mode: 'postgresql' | 'mysql' | 'sqlserver' | 'json' = 'postgresql',
+  mode: EditorDialect = 'postgresql',
   emitSqlChange?: (nodes: Node[], edges: Edge[]) => void
 ) {
   const sqlValue = useEditorStore((state) => state.sqlValue)
@@ -22,6 +24,10 @@ export function useSyncEditor(
       setSyncPaused(false)
       return
     }
+    
+    // Solo procesar cambios si el usuario fue el que editó el SQL
+    if (!useEditorStore.getState().userEditedSql) return
+
     if (!debouncedSQL.trim()) return
 
     try {
@@ -29,8 +35,8 @@ export function useSyncEditor(
         ? parseJSON(debouncedSQL)
         : parseSQL(debouncedSQL, mode)
 
-      // If parsing failed completely (errors + no nodes) — keep the canvas as-is
-      if (result.errors.length > 0 && result.nodes.length === 0) return
+      // Si el parseo no generó nodos (ej. parseador equivocado para el código actual), conservar el canvas
+      if (result.nodes.length === 0) return
 
       // Read current node positions WITHOUT subscribing (avoids infinite loop)
       const currentNodes = useEditorStore.getState().nodes

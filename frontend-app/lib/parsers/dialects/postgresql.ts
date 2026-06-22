@@ -85,12 +85,14 @@ export function parsePostgreSQL(ddl: string): ParseResult {
 
             // Create edge immediately
             result.edges.push({
-              id: `fk-${id}-${refTable.toLowerCase()}`,
+              id: `rel-${id}-${colName}-${refTable.toLowerCase()}-${refCol}`,
               source: id,
+              sourceHandle: `${colName}-source`,
               target: refTable.toLowerCase(),
-              type: 'smoothstep',
+              targetHandle: `${refCol}-target`,
+              type: 'relationship',
               animated: false,
-              style: { stroke: '#00D4FF' }
+              style: { stroke: '#1A6CF6', strokeWidth: 1.5 }
             })
           }
 
@@ -114,6 +116,36 @@ export function parsePostgreSQL(ddl: string): ParseResult {
         }
       })
     })
+
+    // Parse ALTER TABLE foreign keys
+    const alterTableRegex = /ALTER\s+TABLE\s+["']?(\w+)["']?\s+ADD\s+(?:CONSTRAINT\s+["']?\w+["']?\s+)?FOREIGN\s+KEY\s*\(\s*["']?(\w+)["']?\s*\)\s*REFERENCES\s+["']?(\w+)["']?\s*\(\s*["']?(\w+)["']?\s*\)/gi
+    let alterMatch
+    while ((alterMatch = alterTableRegex.exec(normalized)) !== null) {
+      const sourceTable = alterMatch[1].toLowerCase()
+      const sourceCol = alterMatch[2]
+      const targetTable = alterMatch[3].toLowerCase()
+      const targetCol = alterMatch[4]
+
+      const sourceNode = result.nodes.find(n => n.id === sourceTable)
+      if (sourceNode) {
+        const col = sourceNode.data.columns.find((c: Column) => c.name === sourceCol)
+        if (col) {
+          col.isForeignKey = true
+          col.references = { table: targetTable, column: targetCol }
+        }
+      }
+
+      result.edges.push({
+        id: `rel-${sourceTable}-${sourceCol}-${targetTable}-${targetCol}`,
+        source: sourceTable,
+        sourceHandle: `${sourceCol}-source`,
+        target: targetTable,
+        targetHandle: `${targetCol}-target`,
+        type: 'relationship',
+        animated: false,
+        style: { stroke: '#1A6CF6', strokeWidth: 1.5 }
+      })
+    }
 
     return result
   } catch (error) {

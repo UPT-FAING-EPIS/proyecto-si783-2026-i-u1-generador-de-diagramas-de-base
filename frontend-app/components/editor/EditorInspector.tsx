@@ -19,6 +19,100 @@ export function EditorInspector() {
   const updateColumn = useEditorStore((state) => state.updateColumn)
   const deleteColumn = useEditorStore((state) => state.deleteColumn)
   const addRelationship = useEditorStore((state) => state.addRelationship)
+  const dialect = useEditorStore((state) => state.dialect)
+
+  // ── NEO4J: Property Keys inspector ──────────────────────
+  if (dialect === 'neo4j') {
+    const neo4jNodes = nodes.filter(n => n.type === 'neo4jNode')
+    const selectedNode = neo4jNodes.find(n => n.id === selectedNodeId) ?? neo4jNodes[0]
+    const tableName = (selectedNode?.data as { tableName?: string })?.tableName ?? ''
+    const columns = (selectedNode?.data as { columns?: Array<{ name: string; type: string }> })?.columns ?? []
+    const nodeColor = (selectedNode?.data as { color?: string })?.color ?? '#4C9EDB'
+
+    return (
+      <aside
+        className="flex h-full min-h-0 w-full flex-col overflow-y-auto"
+        style={{ background: '#0B1120', borderLeft: '1px solid #1E293B', color: '#ccc' }}
+      >
+        <div className="shrink-0 p-4" style={{ borderBottom: '1px solid #1E293B', background: '#0F172A' }}>
+          <p className="text-xs uppercase tracking-[0.18em]" style={{ color: '#64748B' }}>Inspector</p>
+          {neo4jNodes.length > 0 ? (
+            <select
+              value={selectedNode?.id ?? ''}
+              onChange={(e) => setSelectedNodeId(e.target.value)}
+              className="mt-2 w-full rounded-lg px-3 py-2 text-sm font-semibold outline-none"
+              style={{ background: '#1E293B', border: '1px solid #334155', color: '#ccc' }}
+            >
+              {neo4jNodes.map(n => (
+                <option key={n.id} value={n.id}>
+                  {(n.data as { tableName?: string })?.tableName ?? n.id}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="mt-2 text-xs" style={{ color: '#555' }}>Sin nodos. Escribe Cypher para empezar.</p>
+          )}
+        </div>
+
+        {selectedNode && (
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-5">
+            {/* Label / Node type */}
+            <div className="flex items-center gap-3">
+              <span
+                style={{ width: 16, height: 16, borderRadius: '50%', background: nodeColor, display: 'inline-block', flexShrink: 0 }}
+              />
+              <span className="text-sm font-bold" style={{ color: '#ddd' }}>{tableName}</span>
+            </div>
+
+            {/* Property Keys */}
+            <section>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider" style={{ color: '#64748B' }}>
+                Property Keys
+              </p>
+              <div className="space-y-1.5">
+                {columns.filter(c => c.type !== 'Relation').map(col => (
+                  <div key={col.name} className="flex items-center justify-between rounded-lg px-3 py-2" style={{ background: '#0F172A', border: '1px solid #1E293B' }}>
+                    <span className="text-xs font-mono" style={{ color: '#aaa' }}>{col.name}</span>
+                    <span className="text-[10px] rounded px-1.5 py-0.5" style={{ background: '#1E293B', color: '#94A3B8' }}>
+                      {col.type}
+                    </span>
+                  </div>
+                ))}
+                {columns.filter(c => c.type !== 'Relation').length === 0 && (
+                  <p className="text-xs" style={{ color: '#444' }}>No hay propiedades definidas en el Cypher.</p>
+                )}
+              </div>
+            </section>
+
+            {/* Relationships of this node */}
+            <section>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider" style={{ color: '#64748B' }}>
+                Relaciones
+              </p>
+              <div className="space-y-1.5">
+                {edges.filter(e => e.source === selectedNode.id || e.target === selectedNode.id).map(edge => {
+                  const isOut = edge.source === selectedNode.id
+                  const otherNode = nodes.find(n => n.id === (isOut ? edge.target : edge.source))
+                  const otherLabel = (otherNode?.data as { tableName?: string })?.tableName ?? (isOut ? edge.target : edge.source)
+                  const relLabel = typeof edge.label === 'string' ? edge.label : ''
+                  return (
+                    <div key={edge.id} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: '#0F172A', border: '1px solid #1E293B' }}>
+                      <span className="text-[10px]" style={{ color: '#555' }}>{isOut ? '→' : '←'}</span>
+                      <span className="text-[10px] font-mono uppercase" style={{ color: '#888' }}>{relLabel}</span>
+                      <span className="ml-auto text-[10px]" style={{ color: '#555' }}>{otherLabel}</span>
+                    </div>
+                  )
+                })}
+                {edges.filter(e => e.source === selectedNode.id || e.target === selectedNode.id).length === 0 && (
+                  <p className="text-xs" style={{ color: '#444' }}>Sin relaciones para este nodo.</p>
+                )}
+              </div>
+            </section>
+          </div>
+        )}
+      </aside>
+    )
+  }
 
   const tables = nodes.filter(isEditorNode)
   const selected = tables.find((node) => node.id === selectedNodeId) ?? tables[0]
