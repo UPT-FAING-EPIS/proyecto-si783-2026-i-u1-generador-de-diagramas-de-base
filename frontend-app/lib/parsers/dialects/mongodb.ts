@@ -12,12 +12,16 @@ export function parseMongoDB(code: string): ParseResult {
     let normalized = code.replace(/\/\/.*$/gm, '')
     normalized = normalized.replace(/\/\*[\s\S]*?\*\//g, '')
 
-    // Find Schema definitions
+    // Find Schema definitions (Mongoose style)
     const schemaRegex = /(?:const|let|var)\s+(\w+)Schema\s*=\s*new\s+(?:mongoose\.)?Schema\s*\(/gi
-    let match
     
+    // Find Native MongoDB insertions: db.collection.insertMany(...)
+    const dbRegex = /db\.(\w+)\.insert(?:Many|One)\s*\(/gi
+
+    let match
     const rawSchemas: Array<{ name: string; body: string }> = []
     
+    // Parse Mongoose schemas
     while ((match = schemaRegex.exec(normalized)) !== null) {
       let name = match[1].trim()
       if (name.toLowerCase().endsWith('schema')) {
@@ -27,36 +31,48 @@ export function parseMongoDB(code: string): ParseResult {
       const startIndex = normalized.indexOf('{', match.index)
       if (startIndex === -1) continue
 
-      let depth = 0
-      let endIndex = -1
-      let inString = false
-      let quoteChar = ''
-
-      for (let i = startIndex; i < normalized.length; i++) {
-        const char = normalized[i]
-        if (!inString) {
-          if (char === '"' || char === "'") {
-            inString = true
-            quoteChar = char
-          } else if (char === '{') {
-            depth++
-          } else if (char === '}') {
-            depth--
-            if (depth === 0) {
-              endIndex = i
-              break
-            }
-          }
-        } else {
-          if (char === quoteChar && normalized[i-1] !== '\\') {
-            inString = false
-          }
-        }
-      }
-
+      const endIndex = findClosingBracket(normalized, startIndex, '{', '}')
       if (endIndex !== -1) {
         rawSchemas.push({ name, body: normalized.substring(startIndex, endIndex + 1) })
       }
+    }
+
+    // Parse Native MongoDB scripts
+    while ((match = dbRegex.exec(normalized)) !== null) {
+      let name = match[1].trim()
+      
+      // We look for the first object '{' inside the insert(...) argument
+      const startIndex = normalized.indexOf('{', match.index)
+      if (startIndex === -1) continue
+
+      const endIndex = findClosingBracket(normalized, startIndex, '{', '}')
+      if (endIndex !== -1) {
+        rawSchemas.push({ name, body: normalized.substring(startIndex, endIndex + 1) })
+      }
+    }
+
+    // Helper to find closing bracket
+    function findClosingBracket(text: string, startIndex: number, openBracket: string, closeBracket: string): number {
+      let depth = 0
+      let inString = false
+      let quoteChar = ''
+
+      for (let i = startIndex; i < text.length; i++) {
+        const char = text[i]
+        if (!inString) {
+          if (char === '"' || char === "'") {
+            inString = true; quoteChar = char
+          } else if (char === openBracket) {
+            depth++
+          } else if (char === closeBracket) {
+            depth--
+            if (depth === 0) return i
+          }
+        } else {
+          if (char === quoteChar && text[i-1] !== '\\') inString = false
+        }
+      }
+      return -1
     }
 
     const positions = calculateLayout(rawSchemas.length)
@@ -178,25 +194,36 @@ export function parseMongoDB(code: string): ParseResult {
       const id = name.toLowerCase()
       const columns = parseFields(body, id)
 
-      // Add implicit _id if not exists at root
-      if (!columns.some(c => c.name === '_id')) {
-        columns.unshift({
-          name: '_id',
-          type: 'ObjectId',
-          isPrimaryKey: true,
-          isForeignKey: false
+      const existingNode = result.nodes.find(n => n.id === id)
+      if (existingNode) {
+        // Merge new columns into existing node
+        const existingCols = existingNode.data.columns as Column[]
+        for (const col of columns) {
+          if (!existingCols.some(c => c.name === col.name)) {
+            existingCols.push(col)
+          }
+        }
+      } else {
+        // Add implicit _id if not exists at root
+        if (!columns.some(c => c.name === '_id')) {
+          columns.unshift({
+            name: '_id',
+            type: 'ObjectId',
+            isPrimaryKey: true,
+            isForeignKey: false
+          })
+        }
+
+        result.nodes.push({
+          id,
+          type: 'mongoNode',
+          position: positions[index] || { x: 0, y: 0 },
+          data: {
+            tableName: name,
+            columns
+          }
         })
       }
-
-      result.nodes.push({
-        id,
-        type: 'mongoNode',
-        position: positions[index] || { x: 0, y: 0 },
-        data: {
-          tableName: name,
-          columns
-        }
-      })
     })
 
     // Flatten nested objects into separate nodes

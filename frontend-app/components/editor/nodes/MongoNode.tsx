@@ -16,109 +16,89 @@ export interface MongoNodeData extends Record<string, unknown> {
   tableName: string
   columns: Column[]
   color?: string
+  isSubDocument?: boolean
+  isArray?: boolean
 }
 
-function MongoField({ col, isLast, depth = 0 }: { col: Column, isLast: boolean, depth?: number }) {
-  const isNested = col.subFields && col.subFields.length > 0
-  
-  return (
-    <div className="flex flex-col">
-      <div className="relative flex items-center gap-2 group hover:bg-[#111827] rounded transition-colors pr-2 py-0.5">
-        {/* Left handle (target) */}
-        <Handle
-          type="target"
-          position={Position.Left}
-          id={`${col.name}-target`}
-          className="!w-2.5 !h-2.5 !bg-[#10B981] !border-2 !border-[#0B1322] opacity-0 group-hover:opacity-100 transition-all"
-          style={{ top: '50%', left: `-${18 + depth * 16}px` }}
-        />
-
-        {col.isPrimaryKey ? (
-          <Hash size={12} className="text-[#F59E0B] shrink-0" />
-        ) : col.isForeignKey ? (
-          <Link size={12} className="text-[#3B82F6] shrink-0" />
-        ) : (
-          <span className="w-3 shrink-0" />
-        )}
-
-        {/* Column name (Key) */}
-        <span className="text-[#9cdcfe] shrink-0 truncate">
-          "{col.name}"
-        </span>
-        <span className="text-[#d4d4d4]">:</span>
-
-        {/* Column type / Value */}
-        <span className="text-[#4fc1ff] text-xs truncate flex-1 flex items-center">
-          {col.isArray && <span className="text-[#ffd700] mr-0.5">[</span>}
-          {isNested ? (
-            <span className="text-[#10B981]">{`{`}</span>
-          ) : (
-            col.type
-          )}
-          {col.isArray && !isNested && <span className="text-[#ffd700] ml-0.5">]</span>}
-        </span>
-
-        {!isNested && !isLast && <span className="text-[#d4d4d4]">,</span>}
-
-        {/* Right handle (source) */}
-        <Handle
-          type="source"
-          position={Position.Right}
-          id={`${col.name}-source`}
-          className="!w-2.5 !h-2.5 !bg-[#3B82F6] !border-2 !border-[#0B1322] opacity-0 group-hover:opacity-100 transition-all"
-          style={{ top: '50%', right: '-8px' }}
-        />
-      </div>
-
-      {isNested && (
-        <div className="flex flex-col pl-4 border-l border-[#1E2A45] ml-[5px]">
-          {col.subFields!.map((sub, idx) => (
-            <MongoField key={sub.name} col={sub} isLast={idx === col.subFields!.length - 1} depth={depth + 1} />
-          ))}
-          <div className="text-[#10B981] text-xs mt-0.5">
-            {`}`}
-            {col.isArray && <span className="text-[#ffd700]">]</span>}
-            {!isLast && <span className="text-[#d4d4d4]">,</span>}
-          </div>
-        </div>
-      )}
-    </div>
-  )
+function getTypeSymbol(type: string): string {
+  const t = type.toLowerCase()
+  if (t.includes('string') || t.includes('text')) return 't'
+  if (t.includes('date') || t.includes('time')) return 'd'
+  if (t.includes('number') || t.includes('int') || t.includes('float') || t.includes('double')) return '#'
+  if (t.includes('array')) return '[ ]'
+  if (t.includes('objectid') || t.includes('uuid')) return 'id'
+  if (t.includes('bool')) return 'b'
+  return 't'
 }
 
 export function MongoNode({ data }: NodeProps) {
-  const { tableName, columns: rawCols, color } = data as MongoNodeData
+  const { tableName, columns: rawCols, color, isSubDocument, isArray } = data as MongoNodeData
   const columns: Column[] = Array.isArray(rawCols) ? rawCols : []
-  // Greenish default for MongoDB
-  const accent = color ?? '#10B981'
+  
+  // Theme inspired by the reference image
+  const headerBg = color ?? (isSubDocument ? '#374151' : '#1f2937')
 
   return (
-    <div className="min-w-[260px] overflow-hidden rounded-xl border border-[#1E2A45] bg-[#0B1322] shadow-2xl shadow-black/40 backdrop-blur font-mono">
-      <div className="px-4 py-3 flex items-center justify-between" style={{ background: `linear-gradient(135deg, ${accent}, #059669)` }}>
-        <span className="flex items-center gap-2 truncate text-sm font-bold tracking-wide text-white drop-shadow-md">
-          <Braces size={16} className="opacity-90" />
+    <div className="min-w-[180px] overflow-hidden rounded-lg bg-[#111827] shadow-xl text-sm font-sans border border-[#374151]">
+      <div className="px-3 py-2 flex items-center justify-between" style={{ background: headerBg, borderBottom: '1px solid #374151' }}>
+        <span className="text-white font-semibold text-[13px] tracking-wide truncate pr-2">
           {tableName}
         </span>
-        <span className="text-[10px] font-semibold text-[#0B1322] bg-white/90 px-1.5 py-0.5 rounded shadow-sm">
-          Collection
-        </span>
+        {isSubDocument && (
+          <span className="text-[#FBBF24] font-mono text-xs shrink-0">{isArray ? '[]' : '{}'}</span>
+        )}
       </div>
 
-      <div className="p-3 bg-[#0B1322] text-sm text-[#E2E8F0]">
-        <div className="text-[#10B981] mb-1">{`{`}</div>
-        
-        <div className="flex flex-col gap-0.5 pl-4 border-l border-[#1E2A45] ml-[5px]">
-          {columns.length === 0 ? (
-            <div className="text-[#64748B] text-xs italic pl-2">  // No fields</div>
-          ) : (
-            columns.map((col, idx) => (
-              <MongoField key={col.name} col={col} isLast={idx === columns.length - 1} />
-            ))
-          )}
-        </div>
-        
-        <div className="text-[#10B981] mt-1">{`}`}</div>
+      <div className="py-1.5 flex flex-col">
+        {columns.length === 0 ? (
+          <div className="text-[#6b7280] text-xs italic px-3 py-1">No fields</div>
+        ) : (
+          columns.map((col, idx) => {
+            const typeSym = getTypeSymbol(col.type)
+            return (
+              <div key={idx} className="relative flex items-center justify-between px-3 py-1 hover:bg-[#1f2937] group">
+                <Handle
+                  type="target"
+                  position={Position.Left}
+                  id={`${col.name}-target`}
+                  className="!w-2 !h-2 !bg-[#3B82F6] !border-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{ left: '-4px' }}
+                />
+
+                <div className="flex items-center gap-1.5 overflow-hidden">
+                  {col.isPrimaryKey ? (
+                    <span className="text-[#FBBF24] shrink-0 text-xs font-bold leading-none select-none">🔑</span>
+                  ) : col.isForeignKey ? (
+                    <span className="text-[#3B82F6] shrink-0 text-xs font-bold leading-none select-none">🔗</span>
+                  ) : (
+                    <span className="w-3 shrink-0" />
+                  )}
+                  
+                  <span className="text-[#D1D5DB] text-[12px] truncate">
+                    {col.name}
+                  </span>
+                </div>
+
+                <span className="text-[#6B7280] text-[11px] font-mono shrink-0 ml-3">
+                  {col.isArray ? '[ ]' : typeSym}
+                </span>
+
+                <Handle
+                  type="source"
+                  position={Position.Right}
+                  id={`${col.name}-source`}
+                  className="!w-2 !h-2 !bg-[#3B82F6] !border-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{ right: '-4px' }}
+                />
+              </div>
+            )
+          })
+        )}
       </div>
+      
+      {/* Central handles for Obj/Arr connections */}
+      <Handle type="target" position={Position.Top} id="header-target" className="opacity-0" />
+      <Handle type="source" position={Position.Bottom} id="header-source" className="opacity-0" />
     </div>
   )
 }

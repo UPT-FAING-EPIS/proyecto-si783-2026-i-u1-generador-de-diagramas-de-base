@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ElementType } from 'react'
 import { ReactFlowProvider, useReactFlow, type Edge, type Node } from '@xyflow/react'
-import { ArrowLeft, Braces, CheckCircle2, Code2, Database, FileJson, GitBranch, LayoutGrid, PanelRight, Play, Plus, Save } from 'lucide-react'
+import { ArrowLeft, Braces, CheckCircle2, Code2, Database, FileJson, GitBranch, LayoutGrid, PanelRight, Play, Plus, Save, History } from 'lucide-react'
 import { toast } from 'sonner'
 import { Canvas } from './Canvas'
 import { EditorPanel } from './EditorPanel'
@@ -189,10 +189,17 @@ function EditorLayoutInner({
       <aside className="flex w-14 shrink-0 flex-col items-center border-r border-[#1E2A45] bg-[#0B1322] py-4">
         <Database className="mb-7 h-5 w-5 text-[#B6C7E3]" />
         <NavButton icon={Code2} active={showSqlPanel} label="Mostrar u ocultar SQL" onClick={() => setShowSqlPanel((value) => !value)} />
-        <NavButton icon={GitBranch} label="Enfocar relaciones" onClick={focusRelations} />
-        <NavButton icon={LayoutGrid} label="Ajustar diagrama" onClick={() => fitView({ duration: 350, padding: 0.22 })} />
-        <NavButton icon={Braces} label="Sincronizar SQL desde diagrama" onClick={() => { syncSqlFromCanvas(); toast.success('SQL actualizado desde el diagrama.') }} />
         <NavButton icon={PanelRight} active={showInspector} label="Mostrar u ocultar inspector" onClick={() => setShowInspector((value) => !value)} />
+        
+        <VersionHistorySheet projectId={projectId} onRestore={handleRestore} onCompare={handleCompare}>
+          <button
+            type="button"
+            title="Historial de versiones"
+            className="mb-2 rounded-xl p-3 text-[#64748B] transition hover:bg-[#111827] hover:text-white"
+          >
+            <History size={18} />
+          </button>
+        </VersionHistorySheet>
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
@@ -242,7 +249,6 @@ function EditorLayoutInner({
           </div>
           <PresenceToolbar projectId={projectId} currentUser={currentUser} />
           <PublicShareToggle diagramId={projectId} initialIsPublic={initialIsPublic} initialShareAccess={initialShareAccess} />
-          <VersionHistorySheet projectId={projectId} onRestore={handleRestore} onCompare={handleCompare} />
           <CommitModal projectId={projectId} />
           <ExportMenu projectName={projectName} />
         </header>
@@ -275,12 +281,16 @@ function EditorLayoutInner({
               {showSqlPanel && (
                 <div className="flex h-full min-w-0 flex-col border-r border-[#1E2A45] bg-[#0B1322]">
                   <div className="flex h-11 shrink-0 items-center gap-2 border-b border-[#1E2A45] px-3">
-                    <button onClick={syncSqlFromCanvas} className="rounded-lg border border-[#1E2A45] bg-[#111827] px-3 py-1.5 text-xs text-[#94A3B8] hover:text-white">
-                      Formatear
-                    </button>
-                    <button onClick={handleValidate} className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300">
-                      Validar
-                    </button>
+                    {mode !== 'mongodb' && (
+                      <>
+                        <button onClick={syncSqlFromCanvas} className="rounded-lg border border-[#1E2A45] bg-[#111827] px-3 py-1.5 text-xs text-[#94A3B8] hover:text-white">
+                          Formatear
+                        </button>
+                        <button onClick={handleValidate} className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300">
+                          Validar
+                        </button>
+                      </>
+                    )}
                     <button onClick={() => toast.info('El editor ya sincroniza el esquema en vivo.')} className="rounded-lg bg-[#123A79] px-3 py-1.5 text-xs text-[#BFDBFE]">
                       <Play className="mr-1 inline h-3 w-3" />
                       Ejecutar
