@@ -19,6 +19,7 @@ interface Project {
   updatedAt: Date
   createdAt?: Date
   ownerId: string
+  engineFamily?: string
   deleted_at?: string | null
 }
 
@@ -164,6 +165,15 @@ export function ProjectCard({ project, role, isOwner = false, members, tags, cur
             }`}>
               {role === 'owner' ? 'Pro' : 'Free'}
             </div>
+            {project.engineFamily && (
+              <div className={`mt-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm backdrop-blur-md ${
+                project.engineFamily === 'nosql'
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                  : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+              }`}>
+                {project.engineFamily === 'nosql' ? 'NoSQL' : 'SQL'}
+              </div>
+            )}
           </div>
 
           {/* MENÚ DE 3 PUNTOS (reemplaza botón Invitar) */}

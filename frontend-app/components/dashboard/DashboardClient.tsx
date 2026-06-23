@@ -17,6 +17,7 @@ interface ProjectItem {
     updatedAt: Date
     createdAt?: Date
     ownerId: string
+    engineFamily?: string
     deleted_at?: string | Date | null
   }
   role: string

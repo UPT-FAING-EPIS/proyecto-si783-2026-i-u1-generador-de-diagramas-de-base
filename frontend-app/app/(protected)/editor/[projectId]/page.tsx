@@ -82,6 +82,7 @@ export default async function EditorPage({ params }: EditorPageProps) {
       initialNodes={initialNodes}
       initialEdges={initialEdges}
       dialect={diagramData.dialect ?? 'postgresql'}
+      engineFamily={(access.project.engineFamily as 'sql' | 'nosql') ?? 'sql'}
       currentUser={currentUser}
       initialIsPublic={diagramData.isPublic ?? false}
       initialShareAccess={(diagramData.shareAccess as 'view' | 'edit') ?? 'view'}

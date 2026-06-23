@@ -33,7 +33,6 @@ interface EditorStore {
   selectedNodeId: string | null
   hoveredNodeId: string | null
   dialect: EditorDialect
-  engineFamily: 'sql' | 'nosql'
   syncPaused: boolean
   onNodesChange: (changes: NodeChange[]) => void
   onEdgesChange: (changes: EdgeChange[]) => void
@@ -41,7 +40,6 @@ interface EditorStore {
   setSelectedNodeId: (nodeId: string | null) => void
   setHoveredNodeId: (nodeId: string | null) => void
   setDialect: (dialect: EditorDialect) => void
-  setEngineFamily: (family: 'sql' | 'nosql') => void
   setSyncPaused: (paused: boolean) => void
   addTable: () => void
   updateTable: (nodeId: string, data: Partial<EditorNode['data']>) => void
@@ -67,7 +65,6 @@ export const useEditorStore = create<EditorStore>((set) => ({
   selectedNodeId: null,
   hoveredNodeId: null,
   dialect: 'postgresql',
-  engineFamily: 'sql',
   syncPaused: false,
   userEditedSql: false,
   neo4jFilterLabel: null,
@@ -112,7 +109,6 @@ export const useEditorStore = create<EditorStore>((set) => ({
       neo4jFilterRelationship: null,
     }
   }),
-  setEngineFamily: (engineFamily) => set({ engineFamily }),
   setSyncPaused: (syncPaused) => set({ syncPaused }),
   addTable: () =>
     set((state) => {

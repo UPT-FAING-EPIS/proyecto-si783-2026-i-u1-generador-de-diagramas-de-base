@@ -32,6 +32,7 @@ interface EditorLayoutProps {
   initialNodes?: Node[]
   initialEdges?: Edge[]
   dialect?: string
+  engineFamily: 'sql' | 'nosql'
   currentUser: { id: string, name: string }
   initialIsPublic?: boolean
   initialShareAccess?: 'view' | 'edit'
@@ -53,6 +54,7 @@ function EditorLayoutInner({
   initialNodes = [],
   initialEdges = [],
   dialect = 'postgresql',
+  engineFamily,
   currentUser,
   initialIsPublic = false,
   initialShareAccess = 'view'
@@ -62,9 +64,7 @@ function EditorLayoutInner({
   const edges = useEditorStore((state) => state.edges)
   const sqlValue = useEditorStore((state) => state.sqlValue)
   const mode = useEditorStore((state) => state.dialect)
-  const engineFamily = useEditorStore((state) => state.engineFamily)
   const setDialect = useEditorStore((state) => state.setDialect)
-  const setEngineFamily = useEditorStore((state) => state.setEngineFamily)
   const setSqlValue = useEditorStore((state) => state.setSqlValue)
   const setNodesAndEdges = useEditorStore((state) => state.setNodesAndEdges)
   const addTable = useEditorStore((state) => state.addTable)
@@ -212,23 +212,6 @@ function EditorLayoutInner({
           <h1 className="max-w-52 truncate text-sm font-semibold">{projectName}</h1>
 
           <div className="mx-auto flex items-center gap-3">
-            <div className="flex rounded-xl border border-[#1E2A45] bg-[#0A0F1E] p-1">
-              <button
-                onClick={() => { setEngineFamily('sql'); setDialect('postgresql') }}
-                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition ${engineFamily === 'sql' ? 'bg-[#1A6CF6] text-white shadow-sm' : 'text-[#64748B] hover:text-white'}`}
-              >
-                SQL
-              </button>
-              <button
-                onClick={() => { setEngineFamily('nosql'); setDialect('mongodb') }}
-                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition ${engineFamily === 'nosql' ? 'bg-[#1A6CF6] text-white shadow-sm' : 'text-[#64748B] hover:text-white'}`}
-              >
-                NoSQL
-              </button>
-            </div>
-            
-            <div className="h-5 w-px bg-[#1E2A45]" />
-            
             <div className="flex rounded-xl border border-[#1E2A45] bg-[#0A0F1E] p-1">
               {DIALECTS.filter(d => d.family === engineFamily).map(({ value, label, icon: Icon }) => (
                 <button

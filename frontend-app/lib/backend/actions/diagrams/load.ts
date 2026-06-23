@@ -26,7 +26,7 @@ export async function loadDiagramAction(projectId: string) {
 
   // Check project access
   const [access] = await db
-    .select({ id: projects.id })
+    .select({ id: projects.id, engineFamily: projects.engineFamily })
     .from(projects)
     .innerJoin(
       collaborators,
@@ -50,16 +50,15 @@ export async function loadDiagramAction(projectId: string) {
     .limit(1)
 
   if (!diagram) {
-    // Return empty diagram data if not exists, so it starts fresh
-    // But since schema says name is required, we should maybe insert one?
-    // The issue says: "Si no existe → INSERT diagrama vacío y retornar el creado"
+    // Use engineFamily from project to determine default dialect
+    const defaultDialect = access.engineFamily === 'nosql' ? 'mongodb' : 'postgresql'
     
     try {
       const [newDiagram] = await db.insert(diagrams).values({
         projectId: projectId,
         name: 'Main Diagram',
         sourceCode: '',
-        dialect: 'postgresql',
+        dialect: defaultDialect,
         flowJson: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
         mermaidString: '',
         isPublic: false,
@@ -75,3 +74,4 @@ export async function loadDiagramAction(projectId: string) {
 
   return { error: null, data: diagram }
 }
+
