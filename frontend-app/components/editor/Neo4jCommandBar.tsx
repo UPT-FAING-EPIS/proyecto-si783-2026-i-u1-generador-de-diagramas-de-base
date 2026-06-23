@@ -23,6 +23,19 @@ interface Neo4jCommandBarProps {
   emitSqlChange?: (nodes: Node[], edges: Edge[]) => void
 }
 
+function handleEditorWillMount(monaco: any) {
+  monaco.editor.defineTheme('flux-dark', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [],
+    colors: {
+      'editor.background': '#0F172A',
+      'editor.lineHighlightBackground': '#1E293B',
+      'editorGutter.background': '#0F172A',
+    }
+  })
+}
+
 const COLLAPSED_H = 42   // px — just the toolbar row visible
 const EXPANDED_H  = 200  // px — editor open
 
@@ -107,9 +120,10 @@ export function Neo4jCommandBar({ emitSqlChange }: Neo4jCommandBarProps) {
           <MonacoEditor
             height="100%"
             language="cypher"
-            theme="vs-dark"
+            theme="flux-dark"
             value={sqlValue}
             onChange={(value) => setSqlValue(value ?? '')}
+            beforeMount={handleEditorWillMount}
             options={{
               minimap: { enabled: false },
               fontSize: 13,

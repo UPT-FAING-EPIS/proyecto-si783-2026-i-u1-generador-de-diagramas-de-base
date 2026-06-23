@@ -78,12 +78,12 @@ export function Neo4jSidebar() {
   return (
     <div
       className="flex h-full flex-col overflow-hidden"
-      style={{ background: '#0B1120', borderRight: '1px solid #1E293B', minWidth: 0 }}
+      style={{ background: '#1E293B', borderRight: '1px solid #334155', minWidth: 0 }}
     >
       {/* ── Header ──────────────────────────────────────────── */}
       <div
         className="shrink-0 px-5 py-4"
-        style={{ borderBottom: '1px solid #1E293B' }}
+        style={{ borderBottom: '1px solid #334155' }}
       >
         <p className="text-sm font-bold" style={{ color: '#ccc' }}>
           Database information
@@ -249,7 +249,7 @@ export function Neo4jSidebar() {
       {/* ── Footer ──────────────────────────────────────────── */}
       <div
         className="shrink-0 px-5 py-3"
-        style={{ borderTop: '1px solid #1E293B', background: '#0F172A' }}
+        style={{ borderTop: '1px solid #334155', background: '#0F172A' }}
       >
         <div
           className="rounded-lg p-2.5 text-xs"

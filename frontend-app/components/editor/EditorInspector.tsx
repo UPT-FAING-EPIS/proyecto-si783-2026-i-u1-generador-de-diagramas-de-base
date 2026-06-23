@@ -32,16 +32,16 @@ export function EditorInspector() {
     return (
       <aside
         className="flex h-full min-h-0 w-full flex-col overflow-y-auto"
-        style={{ background: '#0B1120', borderLeft: '1px solid #1E293B', color: '#ccc' }}
+        style={{ background: '#1E293B', borderLeft: '1px solid #334155', color: '#ccc' }}
       >
-        <div className="shrink-0 p-4" style={{ borderBottom: '1px solid #1E293B', background: '#0F172A' }}>
+        <div className="shrink-0 p-4" style={{ borderBottom: '1px solid #334155', background: '#0F172A' }}>
           <p className="text-xs uppercase tracking-[0.18em]" style={{ color: '#64748B' }}>Inspector</p>
           {neo4jNodes.length > 0 ? (
             <select
               value={selectedNode?.id ?? ''}
               onChange={(e) => setSelectedNodeId(e.target.value)}
               className="mt-2 w-full rounded-lg px-3 py-2 text-sm font-semibold outline-none"
-              style={{ background: '#1E293B', border: '1px solid #334155', color: '#ccc' }}
+              style={{ background: '#0F172A', border: '1px solid #334155', color: '#F8FAFC' }}
             >
               {neo4jNodes.map(n => (
                 <option key={n.id} value={n.id}>
@@ -71,8 +71,8 @@ export function EditorInspector() {
               </p>
               <div className="space-y-1.5">
                 {columns.filter(c => c.type !== 'Relation').map(col => (
-                  <div key={col.name} className="flex items-center justify-between rounded-lg px-3 py-2" style={{ background: '#0F172A', border: '1px solid #1E293B' }}>
-                    <span className="text-xs font-mono" style={{ color: '#aaa' }}>{col.name}</span>
+                  <div key={col.name} className="flex items-center justify-between rounded-lg px-3 py-2" style={{ background: '#0F172A', border: '1px solid #334155' }}>
+                    <span className="text-xs font-mono" style={{ color: '#E2E8F0' }}>{col.name}</span>
                     <span className="text-[10px] rounded px-1.5 py-0.5" style={{ background: '#1E293B', color: '#94A3B8' }}>
                       {col.type}
                     </span>
@@ -96,8 +96,8 @@ export function EditorInspector() {
                   const otherLabel = (otherNode?.data as { tableName?: string })?.tableName ?? (isOut ? edge.target : edge.source)
                   const relLabel = typeof edge.label === 'string' ? edge.label : ''
                   return (
-                    <div key={edge.id} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: '#0F172A', border: '1px solid #1E293B' }}>
-                      <span className="text-[10px]" style={{ color: '#555' }}>{isOut ? '→' : '←'}</span>
+                    <div key={edge.id} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: '#0F172A', border: '1px solid #334155' }}>
+                      <span className="text-[10px]" style={{ color: '#94A3B8' }}>{isOut ? '→' : '←'}</span>
                       <span className="text-[10px] font-mono uppercase" style={{ color: '#888' }}>{relLabel}</span>
                       <span className="ml-auto text-[10px]" style={{ color: '#555' }}>{otherLabel}</span>
                     </div>

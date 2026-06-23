@@ -185,9 +185,9 @@ function EditorLayoutInner({
           : 'grid-cols-[1fr]'
 
   return (
-    <div className="flex h-full w-full flex-1 overflow-hidden bg-[#07101F] text-white" onMouseMove={handleMouseMove}>
-      <aside className="flex w-14 shrink-0 flex-col items-center border-r border-[#1E2A45] bg-[#0B1322] py-4">
-        <Database className="mb-7 h-5 w-5 text-[#B6C7E3]" />
+    <div className="flex h-full w-full flex-1 overflow-hidden bg-[#0F172A] text-white" onMouseMove={handleMouseMove}>
+      <aside className="flex w-14 shrink-0 flex-col items-center border-r border-[#334155] bg-[#1E293B] py-4">
+        <Database className="mb-7 h-5 w-5 text-[#94A3B8]" />
         <NavButton icon={Code2} active={showSqlPanel} label="Mostrar u ocultar SQL" onClick={() => setShowSqlPanel((value) => !value)} />
         <NavButton icon={PanelRight} active={showInspector} label="Mostrar u ocultar inspector" onClick={() => setShowInspector((value) => !value)} />
         
@@ -203,8 +203,8 @@ function EditorLayoutInner({
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-[#1E2A45] bg-[#0B1322]/95 px-4 backdrop-blur">
-          <a href="/dashboard" className="rounded-lg p-2 text-[#94A3B8] hover:bg-[#111827] hover:text-white">
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-[#334155] bg-[#1E293B]/95 px-4 backdrop-blur">
+          <a href="/dashboard" className="rounded-lg p-2 text-[#94A3B8] hover:bg-[#334155] hover:text-white">
             <ArrowLeft size={17} />
           </a>
           <span className="text-sm text-[#94A3B8]">Proyectos</span>
@@ -212,7 +212,7 @@ function EditorLayoutInner({
           <h1 className="max-w-52 truncate text-sm font-semibold">{projectName}</h1>
 
           <div className="mx-auto flex items-center gap-3">
-            <div className="flex rounded-xl border border-[#1E2A45] bg-[#0A0F1E] p-1">
+            <div className="flex rounded-xl border border-[#334155] bg-[#0F172A] p-1">
               {DIALECTS.filter(d => d.family === engineFamily).map(({ value, label, icon: Icon }) => (
                 <button
                   key={value}

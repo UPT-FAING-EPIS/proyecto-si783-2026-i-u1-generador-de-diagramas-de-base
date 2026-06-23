@@ -168,8 +168,8 @@ export function ProjectCard({ project, role, isOwner = false, members, tags, cur
             {project.engineFamily && (
               <div className={`mt-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm backdrop-blur-md ${
                 project.engineFamily === 'nosql'
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                  : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                  ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                  : 'bg-blue-100 text-[#1A6CF6] border border-blue-200'
               }`}>
                 {project.engineFamily === 'nosql' ? 'NoSQL' : 'SQL'}
               </div>

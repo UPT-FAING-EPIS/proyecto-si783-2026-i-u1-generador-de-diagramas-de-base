@@ -25,14 +25,10 @@ interface DashboardSidebarProps {
 export function DashboardSidebar({ userName, userEmail, userAvatarUrl, activeSection, onSectionChange }: DashboardSidebarProps) {
 
   return (
-    <aside className="hidden lg:flex flex-col w-[220px] flex-shrink-0 h-screen sticky top-0 bg-[#F4F5F7] border-r border-slate-200">
+    <aside className="hidden lg:flex flex-col w-[220px] flex-shrink-0 h-screen sticky top-0 bg-[#0B1322] border-r border-[#1E2A45]">
       
-      {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 py-5 border-b border-transparent">
-        <div className="w-7 h-7 bg-[#1A6CF6]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-          <span className="text-[#1A6CF6] text-xs font-bold">FX</span>
-        </div>
-        <span className="text-slate-900 font-semibold text-base">FluxSQL</span>
+        <span className="text-white font-semibold text-base">FluxSQL</span>
       </div>
 
       {/* Nav items */}
@@ -46,8 +42,8 @@ export function DashboardSidebar({ userName, userEmail, userAvatarUrl, activeSec
               onClick={() => onSectionChange(id)}
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 border-l-2 w-full ${
                 isActive
-                  ? 'bg-white text-slate-900 font-medium shadow-sm border-transparent'
-                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900 border-transparent hover:translate-x-1'
+                  ? 'bg-[#1A6CF6] text-white font-medium shadow-sm border-transparent'
+                  : 'text-[#94A3B8] hover:bg-[#1E2A45] hover:text-white border-transparent hover:translate-x-1'
               }`}>
               <Icon size={16} />
               {label}
@@ -57,10 +53,10 @@ export function DashboardSidebar({ userName, userEmail, userAvatarUrl, activeSec
       </nav>
 
       {/* Usuario en la parte inferior */}
-      <div className="px-3 py-4 border-t border-slate-200">
+      <div className="px-3 py-4 border-t border-[#151E31]">
         <Link
           href="/profile"
-          className="flex items-center gap-2.5 mb-3 px-1 py-1 rounded-lg transition-colors hover:bg-slate-200/50"
+          className="flex items-center gap-2.5 mb-3 px-1 py-1 rounded-lg transition-colors hover:bg-[#151E31]"
         >
           {userAvatarUrl ? (
             <Image
@@ -69,7 +65,7 @@ export function DashboardSidebar({ userName, userEmail, userAvatarUrl, activeSec
               width={32}
               height={32}
               unoptimized
-              className="w-8 h-8 rounded-full object-cover flex-shrink-0 border-2 border-slate-200"
+              className="w-8 h-8 rounded-full object-cover flex-shrink-0 border-2 border-[#151E31]"
             />
           ) : (
             <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-white text-xs font-bold"
@@ -78,20 +74,20 @@ export function DashboardSidebar({ userName, userEmail, userAvatarUrl, activeSec
             </div>
           )}
           <div className="min-w-0">
-            <p className="text-sm text-slate-900 font-medium truncate">{userName}</p>
-            {userEmail && <p className="text-xs text-slate-500 truncate">{userEmail}</p>}
+            <p className="text-sm text-white font-medium truncate">{userName}</p>
+            {userEmail && <p className="text-xs text-[#94A3B8] truncate">{userEmail}</p>}
           </div>
         </Link>
         <Link
           href="/profile"
-          className="flex items-center gap-2 text-xs w-full px-3 py-2 rounded-lg transition-colors text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 mb-1"
+          className="flex items-center gap-2 text-xs w-full px-3 py-2 rounded-lg transition-colors text-[#94A3B8] hover:text-white hover:bg-[#1E2A45] mb-1"
         >
           <Settings size={14} />
           Configuración
         </Link>
         <form action={logoutAction}>
           <button type="submit"
-            className="flex items-center gap-2 text-xs w-full px-3 py-2 rounded-lg transition-colors text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
+            className="flex items-center gap-2 text-xs w-full px-3 py-2 rounded-lg transition-colors text-[#94A3B8] hover:text-white hover:bg-[#1E2A45]">
             <LogOut size={14} />
             Salir
           </button>
