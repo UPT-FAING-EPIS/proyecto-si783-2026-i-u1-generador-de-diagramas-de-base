@@ -61,5 +61,12 @@ Consulta el checklist en `frontend-app/README.md`. Para validar el flujo princip
 
 ## Documentacion
 
+- [Indice de documentacion](./doc/README.md)
+- [FD01 - Informe de Factibilidad](./doc/FD01-Informe-Factibilidad.md)
+- [FD02 - Informe de Vision de Producto](./doc/FD02-Informe-Vision.md)
+- [FD03 - Informe de Especificacion de Requerimientos](./doc/FD03-Informe-Especificacion-Requerimientos.md)
+- [FD04 - Informe de Arquitectura](./doc/FD04-Informe-Arquitectura-Software.md)
+- [FD05 - Informe de Proyecto](./doc/FD05-Informe-ProyectoFinal.md)
 - [Guia Desktop](./doc/DESKTOP.md)
-- Repositorio oficial con documentacion academica completa: `main`.
+
+La rama `desktop` conserva tambien la trazabilidad de integracion con los repositorios `iovargasjeff/fluxsql` y `iovargasjeff/fluxsql-web`, documentada en los informes FD y en `doc/README.md`.
