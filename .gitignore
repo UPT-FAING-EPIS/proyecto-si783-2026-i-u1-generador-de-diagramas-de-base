@@ -12,6 +12,16 @@ __pycache__/
 *.py[cod]
 *.db
 
+# Desktop generated artifacts
+frontend-app/src-tauri/binaries/
+frontend-app/src-tauri/target/
+frontend-app/src-tauri/gen/
+frontend-app/src-tauri/*.db
+backend-python/build/
+backend-python/dist/
+backend-python/*.db
+backend-python/*.spec.bak
+
 # Builds y caches
 .turbo/
 

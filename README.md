@@ -55,6 +55,8 @@ frontend-app/src-tauri/target/release/bundle/nsis/FluxSQL Desktop_0.1.0_x64-setu
 
 El instalador final incluye el backend y no requiere Node.js, pnpm ni Python.
 
+Los binarios generados en `frontend-app/src-tauri/binaries/`, la carpeta `target/` de Tauri y las bases SQLite locales no se versionan. Se reconstruyen con `pnpm desktop:build` para evitar subir archivos pesados o datos locales al repositorio.
+
 ## Pruebas manuales
 
 Consulta el checklist en `frontend-app/README.md`. Para validar el flujo principal, conecta una base local, genera su diagrama y usa la opcion de refrescar desde la base de datos.
