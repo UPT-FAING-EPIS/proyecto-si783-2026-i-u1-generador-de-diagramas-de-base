@@ -130,13 +130,15 @@ export function serializeVersionSnapshots(nodes: unknown[] | undefined, edges: u
     mysql: serializeSnapshotSchema(nodes, 'mysql'),
     sqlserver: serializeSnapshotSchema(nodes, 'sqlserver'),
     json: serializeSnapshotSchema(nodes, 'json', edges),
+    mongodb: serializeSnapshotSchema(nodes, 'mongodb', edges),
+    neo4j: serializeSnapshotSchema(nodes, 'neo4j', edges),
   }
 }
 
 export function hasVersionSnapshots(value: unknown): value is VersionSnapshots {
   if (!value || typeof value !== 'object') return false
   const candidate = value as Partial<VersionSnapshots>
-  return ['postgresql', 'mysql', 'sqlserver', 'json'].every(
+  return ['postgresql', 'mysql', 'sqlserver', 'json', 'mongodb', 'neo4j'].every(
     (key) => typeof candidate[key as EditorDialect] === 'string'
   )
 }

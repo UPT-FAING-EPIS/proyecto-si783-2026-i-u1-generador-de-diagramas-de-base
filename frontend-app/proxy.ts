@@ -6,6 +6,20 @@ export async function proxy(request: NextRequest) {
     request,
   })
 
+  // MOCK
+  if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('qnkrdqxuhkkixksxghpv')) {
+    const user = null
+    const PUBLIC_ROUTES = ['/', '/login', '/register']
+    const isPublicRoute = PUBLIC_ROUTES.some(route =>
+      request.nextUrl.pathname === route
+    )
+
+    // Permitir acceso a todas las rutas protegidas para poder diseñar
+    return supabaseResponse
+
+    return supabaseResponse
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

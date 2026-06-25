@@ -2,13 +2,15 @@ import { ParseResult, FlowNode, FlowEdge, Column } from './types'
 import { parsePostgreSQL } from './dialects/postgresql'
 import { parseMySQL } from './dialects/mysql'
 import { parseSQLServer } from './dialects/sqlserver'
+import { parseMongoDB } from './dialects/mongodb'
+import { parseNeo4j } from './dialects/neo4j'
 import { calculateLayout } from './utils/layout'
 
 export * from './types'
 
 export function parseSQL(
   ddl: string,
-  dialect: 'postgresql' | 'mysql' | 'sqlserver' = 'postgresql'
+  dialect: 'postgresql' | 'mysql' | 'sqlserver' | 'mongodb' | 'neo4j' = 'postgresql'
 ): ParseResult {
   try {
     if (!ddl || typeof ddl !== 'string' || ddl.trim() === '') {
@@ -21,6 +23,10 @@ export function parseSQL(
       return parseMySQL(ddl)
     } else if (dialect === 'sqlserver') {
       return parseSQLServer(ddl)
+    } else if (dialect === 'mongodb') {
+      return parseMongoDB(ddl)
+    } else if (dialect === 'neo4j') {
+      return parseNeo4j(ddl)
     }
 
     return {

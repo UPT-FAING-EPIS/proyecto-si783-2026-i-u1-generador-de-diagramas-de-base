@@ -6,10 +6,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { inviteCollaboratorAction } from '@/lib/backend/actions/projects/invite'
-import { UserPlus, Trash2 } from 'lucide-react'
-import { deleteProjectAction } from '@/lib/backend/actions/projects/delete'
-import { useRouter } from 'next/navigation'
+import { inviteCollaborator } from '@/lib/backend/actions/projects/invite'
+import { UserPlus } from 'lucide-react'
 
 interface InviteCollaboratorModalProps {
   projectId: string
@@ -30,8 +28,6 @@ export function InviteCollaboratorModal({
   }
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const router = useRouter()
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,32 +35,16 @@ export function InviteCollaboratorModal({
     if (!email.trim() || loading) return
 
     setLoading(true)
-    const result = await inviteCollaboratorAction(projectId, email)
+    const result = await inviteCollaborator(projectId, email)
     setLoading(false)
 
     if (result.error) {
       toast.error(result.error)
     } else {
-      toast.success(result.message)
+      toast.success('Invitación enviada correctamente')
       setOpen(false)
       setEmail('')
     }
-  }
-
-  const handleDeleteProject = async () => {
-    if (deleting || !window.confirm('¿Mover este proyecto a la papelera?')) return
-    setDeleting(true)
-    const result = await deleteProjectAction(projectId)
-    setDeleting(false)
-
-    if (result.error) {
-      toast.error(result.error)
-      return
-    }
-
-    toast.success(result.message)
-    setOpen(false)
-    router.refresh()
   }
 
   return (
@@ -111,25 +91,13 @@ export function InviteCollaboratorModal({
               </div>
             </div>
             <DialogFooter>
-              <div className="flex w-full flex-col gap-2">
-                <Button
-                  type="submit"
-                  disabled={loading || email.trim() === ''}
-                  className="bg-[#1A6CF6] hover:bg-[#1A6CF6]/90 text-white w-full"
-                >
-                  {loading ? 'Invitando...' : 'Enviar invitacion'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={deleting}
-                  onClick={handleDeleteProject}
-                  className="w-full border-red-500/30 bg-red-500/10 text-red-200 hover:bg-red-500/20 hover:text-white"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  {deleting ? 'Eliminando...' : 'Eliminar proyecto'}
-                </Button>
-              </div>
+              <Button 
+                type="submit" 
+                disabled={loading || email.trim() === ''}
+                className="bg-[#1A6CF6] hover:bg-[#1A6CF6]/90 text-white w-full sm:w-auto"
+              >
+                {loading ? 'Invitando...' : 'Invitar'}
+              </Button>
             </DialogFooter>
           </form>
         </motion.div>

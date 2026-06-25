@@ -52,6 +52,7 @@ export default async function PublicPage({ params }: PublicPageProps) {
       shareAccess: diagrams.shareAccess,
       projectName: projects.name,
       projectOwnerId: projects.ownerId,
+      engineFamily: projects.engineFamily,
     })
     .from(diagrams)
     .innerJoin(projects, eq(projects.id, diagrams.projectId))
@@ -83,6 +84,7 @@ export default async function PublicPage({ params }: PublicPageProps) {
         initialNodes={flow.nodes ?? []}
         initialEdges={flow.edges ?? []}
         dialect={diagram.dialect ?? 'postgresql'}
+        engineFamily={(diagram.engineFamily as 'sql' | 'nosql') ?? 'sql'}
         currentUser={currentUser}
         initialIsPublic={diagram.isPublic}
         initialShareAccess={diagram.shareAccess as 'view' | 'edit'}

@@ -16,9 +16,10 @@ export const projects = pgTable('projects', {
   description: text('description'),
   ownerId: uuid('owner_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   tags: text('tags').array().default(sql`ARRAY[]::text[]`),
+  engineFamily: text('engine_family').default('sql').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  deleted_at: timestamp('deleted_at', { withTimezone: true }),
 });
 
 export const collaborators = pgTable('collaborators', {
@@ -55,12 +56,7 @@ export const diagramVersions = pgTable('diagram_versions', {
   flowJson: jsonb('flow_json').notNull(),
   sqlContent: text('sql_content').default(''),
   activeDialect: text('active_dialect').default('postgresql').notNull(),
-  snapshots: jsonb('snapshots').$type<{
-    postgresql: string
-    mysql: string
-    sqlserver: string
-    json: string
-  }>(),
+  snapshots: jsonb('snapshots').$type<Record<string, string>>(),
   message: text('message').notNull(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
