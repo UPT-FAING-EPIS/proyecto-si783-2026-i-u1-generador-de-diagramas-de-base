@@ -9,6 +9,7 @@ import { Suspense } from 'react'
 export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -28,7 +29,7 @@ export default async function DashboardPage() {
   const projects = await getProjectsByUser()
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: '#0A0F1E' }}>
+    <div className="flex min-h-screen bg-white">
       <Suspense fallback={<div className="hidden lg:block w-[220px] flex-shrink-0" />}>
         <DashboardPageContent
           userName={userName}

@@ -105,8 +105,7 @@ export function ExportMenu({ projectName }: ExportMenuProps) {
     setOpen(false)
     const { nodes } = useEditorStore.getState()
     if (dialect === 'all') {
-      const { edges } = useEditorStore.getState()
-      const all = serializeAllDialects(nodes, edges)
+      const all = serializeAllDialects(nodes)
       downloadText(
         Object.entries(all).map(([name, content]) => `-- ${name.toUpperCase()}\n${content}`).join('\n\n'),
         `${safeName}-sql-todos-los-dialectos.sql`
@@ -115,8 +114,7 @@ export function ExportMenu({ projectName }: ExportMenuProps) {
       return
     }
     const extension = dialect === 'json' ? 'json' : 'sql'
-    const { edges } = useEditorStore.getState()
-    downloadText(serializeSchema(nodes, dialect, edges), `${safeName}-${dialect}.${extension}`, dialect === 'json' ? 'application/json' : 'text/sql')
+    downloadText(serializeSchema(nodes, dialect), `${safeName}-${dialect}.${extension}`, dialect === 'json' ? 'application/json' : 'text/sql')
     toast.success(`Exportado como ${dialect}`)
   }
 

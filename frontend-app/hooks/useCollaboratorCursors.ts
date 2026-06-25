@@ -54,7 +54,7 @@ export function useCollaboratorCursors(projectId: string, currentUserId: string,
 
     channel
       .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState<CursorState>()
+        const state = channel.presenceState() as Record<string, CursorState[]>
         const newCursors = new Map<string, CursorState>()
         
         // Iterar sobre los estados de presencia de otros usuarios
@@ -66,7 +66,7 @@ export function useCollaboratorCursors(projectId: string, currentUserId: string,
         
         setCursors(newCursors)
       })
-      .subscribe(async (status) => {
+      .subscribe(async (status: string) => {
         if (status === 'SUBSCRIBED') {
           await channel.track({
             userId: currentUserId,

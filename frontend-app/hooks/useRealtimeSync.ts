@@ -1,9 +1,21 @@
 'use client'
 
 import { useCallback, useEffect, useRef } from 'react'
-import type { Edge, Node } from '@xyflow/react'
+import type { Edge, Node, XYPosition } from '@xyflow/react'
 import { createClient } from '@/lib/backend/supabase/client'
 import { useEditorStore } from '@/store/useEditorStore'
+
+type NodeMovePayload = {
+  nodeId: string
+  position: XYPosition
+  senderId: string
+}
+
+type SqlChangePayload = {
+  nodes: Node[]
+  edges: Edge[]
+  senderId: string
+}
 
 export function useRealtimeSync(projectId: string, userId: string) {
   const channelRef = useRef<ReturnType<ReturnType<typeof createClient>['channel']>>(null)
@@ -15,7 +27,7 @@ export function useRealtimeSync(projectId: string, userId: string) {
     channelRef.current = channel
 
     channel
-      .on('broadcast', { event: 'node_move' }, ({ payload }) => {
+      .on('broadcast', { event: 'node_move' }, ({ payload }: { payload: NodeMovePayload }) => {
         if (payload.senderId === userId) return
 
         const localNodes = useEditorStore.getState().nodes
@@ -26,7 +38,7 @@ export function useRealtimeSync(projectId: string, userId: string) {
 
         useEditorStore.getState().setNodesAndEdges(updatedNodes, localEdges)
       })
-      .on('broadcast', { event: 'sql_change' }, ({ payload }) => {
+      .on('broadcast', { event: 'sql_change' }, ({ payload }: { payload: SqlChangePayload }) => {
         if (payload.senderId === userId) return
 
         const localNodes = useEditorStore.getState().nodes

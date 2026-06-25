@@ -9,17 +9,20 @@ import { toast } from 'sonner'
 import { useReactFlow } from '@xyflow/react'
 import { useEditorStore } from '@/store/useEditorStore'
 import { createVersionAction } from '@/lib/backend/actions/versions/create'
-import { serializeVersionSnapshots } from '@/lib/version-snapshots'
 import { GitCommit } from 'lucide-react'
 
-export function CommitModal({ projectId, children }: { projectId: string; children?: React.ReactNode }) {
+interface CommitModalProps {
+  projectId: string
+  asToolbarButton?: boolean
+}
+
+export function CommitModal({ projectId, asToolbarButton }: CommitModalProps) {
   const [open, setOpen] = useState(false)
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
   const { toObject } = useReactFlow()
   const sqlValue = useEditorStore((state) => state.sqlValue)
-  const dialect = useEditorStore((state) => state.dialect)
 
   const handleCommit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,8 +35,7 @@ export function CommitModal({ projectId, children }: { projectId: string; childr
     // ✅ Serializar y deserializar para limpiar referencias circulares
     const flowJson = JSON.parse(JSON.stringify(rawFlow))
     
-    const snapshots = serializeVersionSnapshots(flowJson.nodes ?? [], flowJson.edges ?? [])
-    const result = await createVersionAction(projectId, flowJson, sqlValue, message.trim(), dialect, snapshots)
+    const result = await createVersionAction(projectId, flowJson, sqlValue, message.trim())
     
     setLoading(false)
 
@@ -49,18 +51,23 @@ export function CommitModal({ projectId, children }: { projectId: string; childr
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {children || (
+        {asToolbarButton ? (
+          <button className="flex min-w-20 flex-col items-center gap-1 border-r border-[#1E2A45] px-3 py-2 text-[11px] last:border-r-0 text-[#94A3B8] hover:text-white">
+            <GitCommit size={15} />
+            Commit
+          </button>
+        ) : (
           <Button 
             variant="outline" 
             size="sm" 
-            className="bg-[#111827] border-[#1E2A45] text-[#E2E8F0] hover:bg-[#1E2A45] hover:text-white"
+            className="bg-[#0B1322] border-[#1E2A45] text-[#94A3B8] hover:bg-[#111827] hover:text-white"
           >
-            <GitCommit className="w-4 h-4 mr-2 text-[#00D4FF]" />
+            <GitCommit className="w-4 h-4 mr-2 text-[#1A6CF6]" />
             Commit
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="bg-[#111827] border-[#1E2A45] text-white sm:max-w-[425px]">
+      <DialogContent className="bg-white border-slate-200 text-slate-900 sm:max-w-[425px]">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: -8 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -69,7 +76,7 @@ export function CommitModal({ projectId, children }: { projectId: string; childr
         >
           <DialogHeader>
             <DialogTitle>Guardar Versión (Commit)</DialogTitle>
-            <DialogDescription className="text-[#94A3B8]">
+            <DialogDescription className="text-slate-500">
               Guarda una instantánea del esquema y canvas actual para poder restaurarla en el futuro.
             </DialogDescription>
           </DialogHeader>
@@ -82,7 +89,7 @@ export function CommitModal({ projectId, children }: { projectId: string; childr
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   maxLength={100}
-                  className="bg-[#0A0F1E] border-[#1E2A45] focus-visible:ring-[#1A6CF6]"
+                  className="bg-white border-slate-200 text-slate-900 focus-visible:ring-[#1A6CF6]"
                   disabled={loading}
                 />
               </div>
