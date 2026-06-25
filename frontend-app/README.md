@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FluxSQL Web
 
-## Getting Started
+Aplicacion web de FluxSQL para crear, editar, guardar, versionar y compartir diagramas de base de datos desde el navegador.
 
-First, run the development server:
+## Stack
+
+- Next.js con App Router.
+- TypeScript.
+- React Flow para el editor visual.
+- Drizzle ORM para esquema y migraciones.
+- Supabase para autenticacion y persistencia.
+- Tailwind CSS y componentes UI propios.
+
+## Funcionalidades principales
+
+- Autenticacion de usuarios.
+- Dashboard de proyectos.
+- Editor visual de diagramas.
+- Parsers SQL para PostgreSQL, MySQL y SQL Server.
+- Historial de versiones.
+- Invitaciones y colaboracion.
+- Enlaces publicos.
+- Exportacion de diagramas.
+
+## Desarrollo
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+La aplicacion se ejecuta en:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```text
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Build
 
-## Learn More
+```bash
+pnpm build
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Estructura relevante
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Ruta | Descripcion |
+| :-- | :-- |
+| `app/` | Rutas publicas, protegidas y layout principal |
+| `components/dashboard/` | Dashboard y gestion de proyectos |
+| `components/editor/` | Editor visual de diagramas |
+| `lib/backend/` | Acciones server-side, base de datos y migraciones |
+| `lib/parsers/` | Parsers SQL y utilidades de layout |
+| `store/` | Estado del editor |
+| `e2e/` | Pruebas Playwright |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Documentacion
 
-## Deploy on Vercel
+La documentacion academica y tecnica se encuentra en:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```text
+../doc/
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Documento especifico de la variante web:
+
+```text
+../doc/WEB.md
+```

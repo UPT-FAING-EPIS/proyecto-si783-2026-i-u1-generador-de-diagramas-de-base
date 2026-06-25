@@ -31,6 +31,7 @@ Integrantes:
 | :-: | :- | :- | :- | :- | :- |
 | Versión | Hecha por | Revisada por | Aprobada por | Fecha | Motivo |
 | 1.0 | KHZM / JAVE | | | Marzo 2026 | Versión Original basada en FD01 |
+| 1.1 | KHZM / JAVE | | | Junio 2026 | Actualización de visión Web/Desktop |
 
 <br><br><br><br><br><br><br><br><br>
 
@@ -41,6 +42,10 @@ Integrantes:
 **Versión *1.0***
 
 <div style="page-break-after: always; visibility: hidden">\pagebreak</div>
+
+## Nota de Actualización - Junio 2026
+
+La visión del producto se actualiza para reflejar la consolidación final del repositorio oficial. La rama `main` representa la **Web App** colaborativa de FluxSQL, mientras que la rama `desktop` representa la **Desktop App** local. Ambas variantes mantienen el mismo propósito de producto: generar diagramas de base de datos a partir de esquemas, scripts SQL o conexiones reales. Las referencias a la arquitectura preliminar se conservan como trazabilidad de planificación.
 
 **ÍNDICE GENERAL**
 #

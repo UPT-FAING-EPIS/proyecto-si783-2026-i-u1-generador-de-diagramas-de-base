@@ -38,8 +38,13 @@ Versión *1.0*
 | :-: | :- | :- | :- | :- | :- |
 | Versión | Hecha por | Revisada por | Aprobada por | Fecha | Motivo |
 | 1.0 | KHZM / JAVE | | | Abril 2026 | Versión Original |
+| 1.1 | KHZM / JAVE | | | Junio 2026 | Actualización de requerimientos por variante |
 
 ***
+
+## Nota de Actualización - Junio 2026
+
+Los requerimientos se interpretan en dos superficies de entrega. La rama `main` cubre los requerimientos de la **Web App**: autenticación, dashboard, proyectos, editor, versiones, colaboración, enlaces públicos y exportación. La rama `desktop` cubre los requerimientos de la **Desktop App**: ejecución local, conectores directos, inspección de esquemas, generación de diagramas, generación de datos y análisis de consultas. Esta separación permite mantener trazabilidad académica sin mezclar la implementación web con el empaquetado de escritorio.
 
 ## ÍNDICE GENERAL
 

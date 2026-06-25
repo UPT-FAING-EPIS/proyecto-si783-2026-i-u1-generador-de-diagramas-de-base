@@ -43,9 +43,14 @@ Versión *1.0*
 | :--: | :-- | :-- | :-- | :-- | :-- |
 | Versión | Hecha por | Revisada por | Aprobada por | Fecha | Motivo |
 | 1.0 | KHZM / JAVE |  |  | Marzo 2026 | Versión Original |
+| 1.1 | KHZM / JAVE |  |  | Junio 2026 | Actualización de alcance final Web/Desktop |
 
 
 ***
+
+## Nota de Actualización - Junio 2026
+
+El análisis de factibilidad se mantiene como evidencia de la planificación inicial del proyecto. Para la entrega final, el repositorio oficial conserva dos variantes: la **Web App** en la rama `main`, basada en Next.js, Supabase/Drizzle y despliegue en Vercel; y la **Desktop App** en la rama `desktop`, basada en Tauri, frontend estático y backend local FastAPI. Las referencias históricas a Electron, Go, `Turborepo` o paquetes `@dbcanvas/*` corresponden a la arquitectura prevista en la fase de factibilidad y fueron reemplazadas por la implementación final documentada en FD04 y FD05.
 
 ## ÍNDICE GENERAL
 

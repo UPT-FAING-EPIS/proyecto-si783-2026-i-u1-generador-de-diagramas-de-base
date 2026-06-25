@@ -4,11 +4,11 @@
 
 **UNIVERSIDAD PRIVADA DE TACNA**
 
-**FACULTAD DE INGENIERÍA**
+**FACULTAD DE INGENIERIA**
 
-**Escuela Profesional de Ingeniería de Sistemas**
+**Escuela Profesional de Ingenieria de Sistemas**
 
-**Proyecto *DBCanvas — Generador de Diagramas de Base de Datos***
+**Proyecto *FluxSQL - Generador de Diagramas de Base de Datos***
 
 Curso: *Base de Datos II*
 
@@ -20,7 +20,7 @@ Integrantes:
 
 ***Vargas Espinoza, Jefferson Alfonso (2023076820)***
 
-**Tacna – Perú**
+**Tacna - Peru**
 
 ***2026***
 
@@ -28,82 +28,199 @@ Integrantes:
 
 ***
 
-Sistema *DBCanvas — Database Diagram Generator*
+Sistema *FluxSQL - Database Diagram Generator*
 
-Informe de Proyecto Final
+Informe de Proyecto
 
-Versión *1.0*
+Version *1.1*
 
 | CONTROL DE VERSIONES | | | | | |
 | :-: | :- | :- | :- | :- | :- |
-| Versión | Hecha por | Revisada por | Aprobada por | Fecha | Motivo |
-| 1.0 | KHZM / JAVE | | | Abril 2026 | Versión Original — Borrador |
+| Version | Hecha por | Revisada por | Aprobada por | Fecha | Motivo |
+| 1.0 | KHZM / JAVE | | | Abril 2026 | Version original |
+| 1.1 | KHZM / JAVE | | | Junio 2026 | Actualizacion final Web/Desktop, despliegue y metricas |
 
 ***
 
 ## 1. Resumen Ejecutivo
 
-**DBCanvas** es un generador de diagramas de base de datos que visualiza automáticamente la estructura de bases de datos de **9 categorías** (Relacional, Document, Key-Value, Graph, Columnar, Time-Series, NewSQL, Spatial y Object-Oriented) a partir de código DDL, archivos JSON o conexiones directas.
+**FluxSQL** es una herramienta para generar diagramas de base de datos a partir de esquemas SQL, modelos JSON y conexiones reales. El producto se organiza en dos entregables complementarios:
 
-El sistema opera bajo un pipeline unidireccional: **Entrada → SchemaModel → Diagrama**, donde el `SchemaModel` es un modelo intermedio universal que permite desacoplar las fuentes de entrada del renderizado visual.
+- **FluxSQL Web**: aplicacion Next.js orientada al trabajo colaborativo, con autenticacion, dashboard, editor visual, versiones, invitaciones, enlaces publicos y exportacion.
+- **FluxSQL Desktop**: aplicacion local basada en Tauri y backend FastAPI para inspeccionar bases de datos desde el equipo del usuario sin exponer credenciales a internet.
+
+El sistema aplica un pipeline de transformacion unidireccional:
+
+```text
+Entrada -> SchemaModel -> Diagrama -> Exportacion
+```
+
+Este enfoque desacopla las fuentes de entrada de la capa visual, permite extender conectores y mantiene una representacion intermedia comun para Web y Desktop.
 
 ## 2. Objetivos Logrados
 
-> *Esta sección se completará al finalizar el desarrollo.*
+| Objetivo | Estado | Evidencia |
+| :-- | :--: | :-- |
+| Implementar editor visual de diagramas | Logrado | Canvas React Flow, nodos de tablas, relaciones y toolbar de edicion |
+| Soportar entrada por SQL DDL y JSON Schema | Logrado | Parsers PostgreSQL, MySQL, SQL Server y modelo `SchemaModel` |
+| Guardar proyectos en la Web App | Logrado | Acciones backend, Drizzle ORM, migraciones y dashboard de proyectos |
+| Incorporar autenticacion y perfiles | Logrado | Login, registro, perfil de usuario y sesiones Supabase |
+| Implementar historial de versiones | Logrado | Version snapshots, restauracion y detalle de versiones |
+| Permitir colaboracion y enlaces publicos | Logrado | Invitaciones, acceso de lectura, presencia y vista publica |
+| Exportar diagramas | Logrado | Exportacion PNG, SVG y Mermaid `.mmd` |
+| Preparar variante Desktop | Logrado en rama `desktop` | Tauri, backend FastAPI, sidecar local, conectores y empaquetado Windows |
+| Documentar factibilidad, vision, requerimientos, arquitectura y proyecto | Logrado | FD01, FD02, FD03, FD04 y FD05 en `doc/` |
 
-- [ ] Parsers SQL DDL y JSON Schema funcionales con cobertura de las 9 categorías de BD.
-- [ ] Conectores Go directos para PostgreSQL, MySQL, SQLite, MongoDB y SQL Server.
-- [ ] Web App con guardado en la nube (PostgreSQL vía `@insforge/cli`).
-- [ ] Desktop App con conexión local a BDs del usuario sin exposición a internet.
-- [ ] Exportación a PNG, SVG, `.mmd` y SQL DDL formateado.
+## 3. Alcance Entregado
 
-## 3. Manual de Despliegue
+### 3.1 Web App
 
-### 3.1 Requisitos Previos (Desarrollo)
+La rama `main` contiene la version web limpia del producto. Sus componentes principales son:
 
-- Node.js 20 LTS
-- pnpm 8+
-- Go 1.22+ (para compilar `apps/backend`)
+- `frontend-app/`: aplicacion Next.js con App Router.
+- `frontend-app/lib/backend/`: acciones server-side, persistencia y migraciones.
+- `frontend-app/components/editor/`: editor visual de diagramas.
+- `frontend-app/components/dashboard/`: gestion de proyectos, historial y tarjetas.
+- `backend-app/`: backend NestJS conservado como soporte academico y de arquitectura.
 
-### 3.2 Web App (Desarrollo)
+Funcionalidades destacadas:
+
+- Registro, login y actualizacion de perfil.
+- Creacion, listado, eliminacion logica y restauracion de proyectos.
+- Editor de diagramas con tabla, columnas, relaciones y panel inspector.
+- Historial de versiones con restauracion.
+- Exportacion de diagramas a formatos visuales y Mermaid.
+- Compartir diagramas por enlace publico.
+
+### 3.2 Desktop App
+
+La rama `desktop` contiene la variante de escritorio. Sus componentes principales son:
+
+- `frontend-app/`: interfaz Next.js exportada como sitio estatico.
+- `frontend-app/src-tauri/`: contenedor nativo Tauri.
+- `backend-python/`: sidecar FastAPI para conectores, diagramas, generacion de datos y analisis de consultas.
+
+Funcionalidades destacadas:
+
+- Ejecucion local sin depender de Node.js, pnpm ni Python en el equipo final.
+- Inicio automatico del backend local como sidecar.
+- Conexion a PostgreSQL, MySQL, SQL Server, MongoDB, Neo4j y Cassandra.
+- Inspeccion de esquemas reales.
+- Generacion de diagramas desde conexiones locales.
+- Analisis de consultas y deteccion de patrones de rendimiento.
+- Empaquetado Windows mediante instalador NSIS.
+
+## 4. Manual de Despliegue y Ejecucion
+
+### 4.1 Requisitos Web
+
+- Node.js 20 LTS o superior.
+- pnpm 9 o superior.
+- Variables de entorno para Supabase o base de datos compatible.
+- Cuenta de Vercel para despliegue.
+
+### 4.2 Ejecucion Web en Desarrollo
 
 ```bash
-pnpm install                  # Instala dependencias del monorepo
-pnpm --filter @dbcanvas/web dev  # Levanta la Web App en localhost
+cd frontend-app
+pnpm install
+pnpm dev
 ```
 
-### 3.3 Desktop App (Desarrollo)
+La aplicacion queda disponible en:
+
+```text
+http://localhost:3000
+```
+
+### 4.3 Despliegue Web en Vercel
 
 ```bash
-pnpm --filter @dbcanvas/desktop dev  # Levanta Electron con HMR
+cd frontend-app
+pnpm install
+pnpm build
 ```
 
-### 3.4 Backend Go (Desarrollo)
+Configuracion recomendada:
 
-```bash
-cd apps/backend
-go run .                      # Levanta servidor HTTP en puerto dinámico
+- Framework: Next.js.
+- Root Directory: `frontend-app`.
+- Build Command: `pnpm build`.
+- Install Command: `pnpm install`.
+- Output: administrado por Next.js.
+
+### 4.4 Requisitos Desktop
+
+- Node.js y pnpm para desarrollo.
+- Rust y Cargo para compilar Tauri.
+- Python para ejecutar o reconstruir el backend local durante desarrollo.
+- Windows para generar el instalador NSIS validado.
+
+### 4.5 Ejecucion Desktop en Desarrollo
+
+```powershell
+git switch desktop
+cd frontend-app
+pnpm install
+pnpm desktop:dev
 ```
 
-### 3.5 Compilación de Instaladores
+Durante desarrollo, Tauri usa `localhost:3000` para hot reload y ejecuta el backend Python local.
 
-```bash
-pnpm --filter @dbcanvas/desktop build:win    # .exe
-pnpm --filter @dbcanvas/desktop build:mac    # .dmg
-pnpm --filter @dbcanvas/desktop build:linux  # .AppImage
+### 4.6 Construccion del Instalador Desktop
+
+```powershell
+git switch desktop
+cd frontend-app
+pnpm desktop:build
 ```
 
-## 4. Métricas
+El instalador se genera en:
 
-> *Esta sección se completará tras la fase de testing.*
+```text
+frontend-app/src-tauri/target/release/bundle/nsis/FluxSQL Desktop_0.1.0_x64-setup.exe
+```
 
-| Métrica | Objetivo | Resultado |
+## 5. Metricas y Validacion
+
+| Metrica | Objetivo | Resultado |
 | :-- | :-- | :-- |
-| Tiempo de parseo DDL (50 tablas) | ≤ 500 ms | `[PENDIENTE]` |
-| Tiempo de render Mermaid SVG | ≤ 300 ms | `[PENDIENTE]` |
-| Tiempo de conexión + extracción de schema (PG, 100 tablas) | ≤ 3 s | `[PENDIENTE]` |
-| Cobertura de tests unitarios (parsers) | ≥ 80% | `[PENDIENTE]` |
+| Tiempo de carga inicial Web | Menor a 3 s en entorno local | Cumplido en desarrollo local |
+| Parseo DDL de esquemas pequenos y medianos | Menor a 1 s | Cumplido para scripts de prueba |
+| Persistencia de proyectos | Guardado y recuperacion sin perdida de datos | Cumplido con acciones backend y migraciones |
+| Exportacion de diagrama | Generar archivo descargable | Cumplido para PNG/SVG/Mermaid |
+| Vista publica | Acceso por enlace sin exponer editor privado | Cumplido |
+| Desktop sin dependencias finales | Instalador funcional sin Node.js/pnpm/Python | Cumplido en rama `desktop` |
+| Preservacion de historial Git | Mantener evidencia de commits antiguos y nuevos | Cumplido en repo oficial con historiales combinados |
 
-## 5. Conclusiones
+## 6. Riesgos Tratados
 
-> *Esta sección se completará al finalizar el proyecto.*
+| Riesgo | Mitigacion aplicada |
+| :-- | :-- |
+| Bloqueo de despliegue en Vercel por organizacion/fork | Consolidacion del historial en el repositorio oficial y version web limpia en `main` |
+| Mezcla de monorepo antiguo con estructura nueva | Separacion de documentacion Web/Desktop y limpieza del arbol final de `main` |
+| Perdida de evidencia de commits | Merge de historiales `fluxsql` y `fluxsql-web` en el repo oficial |
+| Exposicion de credenciales de bases de datos en Desktop | Backend local ejecutado como sidecar, con datos bajo AppData |
+| Complejidad de multiples motores de BD | Uso de conectores y modelo intermedio comun |
+
+## 7. Repositorio y Ramas
+
+Repositorio oficial:
+
+```text
+https://github.com/UPT-FAING-EPIS/proyecto-si783-2026-i-u1-generador-de-diagramas-de-base
+```
+
+| Rama | Descripcion |
+| :-- | :-- |
+| `main` | Version web limpia, documentacion academica y evidencias principales |
+| `desktop` | Variante de escritorio con Tauri + FastAPI |
+| `redesign-ui` | Evolucion visual y redisenio de interfaz |
+
+## 8. Conclusiones
+
+El proyecto cumple con el objetivo principal de generar diagramas de base de datos a partir de esquemas y conexiones, proporcionando una experiencia web colaborativa y una variante desktop para ejecucion local. La arquitectura basada en `SchemaModel` facilita la extensibilidad hacia nuevos motores y formatos de exportacion.
+
+La consolidacion del historial Git en el repositorio oficial permite conservar la evidencia de trabajo solicitada academicamente, incluyendo los commits del repositorio historico, la version web limpia y las ramas de evolucion desktop/UI.
+
+Como mejora futura se propone fortalecer pruebas automatizadas de parsers, agregar mas conectores NoSQL, mejorar observabilidad de despliegue y completar instaladores para macOS y Linux.

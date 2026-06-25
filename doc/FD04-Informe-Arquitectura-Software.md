@@ -38,8 +38,13 @@ Versión *1.0*
 | :-: | :- | :- | :- | :- | :- |
 | Versión | Hecha por | Revisada por | Aprobada por | Fecha | Motivo |
 | 1.0 | KHZM / JAVE | | | Abril 2026 | Versión Original |
+| 1.1 | KHZM / JAVE | | | Junio 2026 | Actualización de arquitectura Web/Desktop |
 
 ***
+
+## Nota de Actualización - Junio 2026
+
+La arquitectura final se documenta como una arquitectura de dos variantes. En `main`, FluxSQL Web usa Next.js, componentes React, acciones server-side, Drizzle/Supabase y despliegue Vercel. En `desktop`, FluxSQL Desktop usa Tauri, frontend Next.js exportado estáticamente y backend FastAPI local como sidecar. La arquitectura conceptual `Entrada -> SchemaModel -> Diagrama` se mantiene vigente y permite compartir criterios de modelado entre ambas variantes.
 
 ## ÍNDICE GENERAL
 
