@@ -1,275 +1,95 @@
+# FD04 - Informe de Arquitectura
+
 <center>
 
 ![logo UPT](./media/logo-upt.png)
 
-**UNIVERSIDAD PRIVADA DE TACNA**
+**UNIVERSIDAD PRIVADA DE TACNA**  
+**FluxSQL Desktop - Arquitectura de Software**
 
-**FACULTAD DE INGENIERÍA**
-
-**Escuela Profesional de Ingeniería de Sistemas**
-
-**Proyecto *DBCanvas — Generador de Diagramas de Base de Datos***
-
-Curso: *Base de Datos II*
-
-Docente: *Mag. Patrick Cuadros Quiroga*
-
-Integrantes:
-
-***Zapana Murillo, Kiara Holly (2023077087)***
-
-***Vargas Espinoza, Jefferson Alfonso (2023076820)***
-
-**Tacna – Perú**
-
-***2026***
+Integrantes: Kiara Zapana Murillo y Jefferson Vargas Espinoza  
+Tacna - Peru, 2026
 
 </center>
 
-***
+## Control de versiones
 
-Sistema *DBCanvas — Database Diagram Generator*
+| Version | Hecha por | Fecha | Motivo |
+| :-- | :-- | :-- | :-- |
+| 1.0 | KHZM / JAVE | Junio 2026 | Arquitectura especifica de la rama `desktop` |
 
-Informe de Arquitectura de Software
+## 1. Introduccion
 
-Versión *1.0*
+FluxSQL Desktop usa una arquitectura local compuesta por una interfaz web exportada, un contenedor nativo Tauri y un backend FastAPI ejecutado como sidecar. Esta arquitectura permite entregar una aplicacion instalable que procesa conexiones y credenciales en el equipo del usuario.
 
-| CONTROL DE VERSIONES | | | | | |
-| :-: | :- | :- | :- | :- | :- |
-| Versión | Hecha por | Revisada por | Aprobada por | Fecha | Motivo |
-| 1.0 | KHZM / JAVE | | | Abril 2026 | Versión Original |
-| 1.1 | KHZM / JAVE | | | Junio 2026 | Actualización de arquitectura Web/Desktop |
-
-***
-
-## Nota de Actualización - Junio 2026
-
-La arquitectura final se documenta como una arquitectura de dos variantes. En `main`, FluxSQL Web usa Next.js, componentes React, acciones server-side, Drizzle/Supabase y despliegue Vercel. En `desktop`, FluxSQL Desktop usa Tauri, frontend Next.js exportado estáticamente y backend FastAPI local como sidecar. La arquitectura conceptual `Entrada -> SchemaModel -> Diagrama` se mantiene vigente y permite compartir criterios de modelado entre ambas variantes.
-
-## ÍNDICE GENERAL
-
-1. Introducción
-2. Representación Arquitectónica
-3. Metas y Restricciones Arquitectónicas
-4. Vista Lógica
-5. Vista de Procesos
-6. Vista de Despliegue
-
-***
-
-## 1. Introducción
-
-### 1.1 Propósito
-
-Este documento proporciona una visión completa de la arquitectura del sistema **DBCanvas — Generador de Diagramas de Base de Datos**. Describe las decisiones de diseño que permiten al sistema recibir esquemas de **9 categorías distintas de bases de datos** y producir diagramas visuales de forma rápida, segura y extensible.
-
-### 1.2 Alcance
-
-Se describen la arquitectura de transformación de datos (pipeline `Entrada → SchemaModel → Diagrama`), la estructura del monorepo, la separación entre parsers client-side y conectores server-side, y la infraestructura de persistencia en la nube para la Web App.
-
-***
-
-## 2. Representación Arquitectónica
-
-### 2.1 Patrón Central: Pipeline de Transformación Unidireccional
-
-La decisión arquitectónica más importante del sistema es que **toda fuente de entrada se convierte a un modelo intermedio universal (`SchemaModel`)** antes de renderizar el diagrama. Esto desacopla completamente las entradas (parsers, conectores) de la salida (Mermaid.js).
-
-```mermaid
-graph LR
-    subgraph Entradas
-        A[SQL DDL Text]
-        B[JSON Schema]
-        C[Conector PG/MySQL/SQLite]
-        D[Conector MongoDB]
-        E[Conector SQL Server]
-        F[Archivo .sql/.json]
-    end
-
-    subgraph Core
-        G[SchemaModel]
-    end
-
-    subgraph Salida
-        H[Mermaid ERD String]
-        I[SVG Interactivo]
-        J[Export PNG/SVG/MMD]
-    end
-
-    A --> G
-    B --> G
-    C --> G
-    D --> G
-    E --> G
-    F --> G
-    G --> H --> I --> J
-```
-
-**¿Por qué este patrón?**
-- **Extensibilidad:** Para soportar un nuevo tipo de BD, solo se agrega un nuevo parser o conector que produzca un `SchemaModel`. **No se toca el renderer.**
-- **Testabilidad:** Cada parser se prueba de forma aislada: entrada conocida → `SchemaModel` esperado.
-- **Reutilización:** El mismo `SchemaModel` sirve para Web App y Desktop App.
-
-### 2.2 Estilo Arquitectónico: Monorepo con Packages Compartidos
+## 2. Vista general
 
 ```mermaid
 graph TD
-    A["Monorepo DBCanvas"] --> B["apps/"]
-    A --> C["packages/"]
-    A --> D["doc/"]
-    A --> E["skills/"]
-
-    B --> B1["web (React + Vite)"]
-    B --> B2["desktop (Electron)"]
-    B --> B3["backend (Go)"]
-
-    C --> C1["@dbcanvas/parsers"]
-    C --> C2["@dbcanvas/ui"]
-
-    B1 -.->|importa| C1
-    B1 -.->|importa| C2
-    B2 -.->|importa| C1
-    B2 -.->|importa| C2
-    B2 -.->|spawn child process| B3
+    U[Usuario] --> T[Tauri Shell]
+    T --> F[Frontend Next.js estatico]
+    T --> B[Backend FastAPI sidecar]
+    F --> B
+    B --> C[Conectores BD]
+    B --> Q[Query Analyzer]
+    B --> G[Generador de datos]
+    C --> DB[(Bases de datos)]
 ```
 
-| Paquete | Responsabilidad | Lenguaje |
+## 3. Componentes
+
+| Componente | Ruta | Responsabilidad |
 | :-- | :-- | :-- |
-| `packages/parsers` | Parsers puros: SQL DDL → SchemaModel, JSON Schema → SchemaModel. Sin dependencias de browser ni Node.js. | TypeScript |
-| `packages/ui` | Componentes React compartidos: `DiagramViewer`, `CodeEditor`, `TableSelector`, `ConnectionForm` | TypeScript / React |
-| `apps/web` | Web App React. Usa parsers client-side. Persiste diagramas en PostgreSQL vía `@insforge/cli`. | TypeScript |
-| `apps/desktop` | Electron shell. Usa los mismos componentes UI. Se comunica con `apps/backend` vía HTTP local. | TypeScript |
-| `apps/backend` | Servidor HTTP Go. Conectores nativos para PG, MySQL, SQLite, MongoDB, SQL Server. Retorna `SchemaModel` como JSON. | Go |
+| Frontend | `frontend-app/` | UI, rutas protegidas, editor, generador y analizador |
+| Tauri | `frontend-app/src-tauri/` | Ventana nativa, comandos, ciclo de vida del backend e instalador |
+| Backend | `backend-python/` | API local FastAPI |
+| Conectores | `backend-python/backend/connectors/` | Conexion e inspeccion por motor |
+| Analizador | `backend-python/query_analyzer/` | Analisis de consultas y metricas |
+| Persistencia local | AppData | SQLite, logs y archivos locales |
 
-***
+## 4. Vista de despliegue
 
-## 3. Metas y Restricciones Arquitectónicas
+```text
+Equipo Windows
+  FluxSQL Desktop.exe
+    Tauri runtime
+    Frontend estatico out/
+    Sidecar backend Python empaquetado
+    Datos locales en %APPDATA%/com.fluxsql.desktop
+```
 
-| Meta / Restricción | Descripción |
+## 5. Flujo de inicio
+
+1. El usuario abre FluxSQL Desktop.
+2. Tauri crea la ventana principal.
+3. Tauri inicia el sidecar FastAPI en un puerto local dinamico.
+4. Tauri espera respuesta de `/health`.
+5. El frontend consume la API local.
+6. Al cerrar la aplicacion, Tauri termina el proceso backend.
+
+## 6. Motores soportados
+
+- PostgreSQL.
+- MySQL.
+- SQL Server.
+- MongoDB.
+- Neo4j.
+- Cassandra.
+
+## 7. Decisiones arquitectonicas
+
+| Decision | Justificacion |
 | :-- | :-- |
-| **Solo lectura** | El sistema NUNCA modifica la base de datos del usuario. Solo lee metadatos (`information_schema`, `PRAGMA`, aggregations). |
-| **Privacidad local (Desktop)** | Ningún dato del esquema del usuario sale de su máquina en la versión Desktop. El backend Go corre como proceso local. |
-| **Sin vendor lock-in (Web)** | La tabla `usuarios` con credenciales propias permite migrar de `@insforge/cli` a cualquier PostgreSQL con un `pg_dump`. |
-| **Extensibilidad por plugins** | Agregar soporte para un nuevo motor de BD = implementar la interfaz `Connector` en Go (Desktop) o un nuevo parser en TypeScript (Web). |
-| **9 categorías de BD** | Cubrir Relacional, Document, Key-Value, Graph, Columnar, Time-Series, NewSQL, Spatial y Object-Oriented mediante la combinación de parsers SQL DDL + JSON Schema + conectores. |
+| Tauri en lugar de Electron | Menor peso y mejor control nativo |
+| FastAPI como sidecar | Rapidez de desarrollo y ecosistema Python para conectores |
+| Frontend exportado | El instalador final no depende de servidor Next.js |
+| Procesamiento local | Reduce riesgo de exponer credenciales |
+| Conectores separados | Facilita mantener motores de BD independientes |
 
-***
+## 8. Relacion con `main`
 
-## 4. Vista Lógica
+La rama `main` conserva la arquitectura Web: Next.js, Supabase/Drizzle, dashboard colaborativo y despliegue cloud. La rama `desktop` adapta la experiencia a un contexto local: Tauri, FastAPI, conectores directos y empaquetado. Ambas comparten el objetivo conceptual de transformar esquemas en diagramas.
 
-### 4.1 Vista de Interacción — Web App (Parsing Client-Side)
+## 9. Trazabilidad historica
 
-```mermaid
-sequenceDiagram
-    participant U as Usuario
-    participant Editor as Monaco Editor
-    participant Parser as @dbcanvas/parsers
-    participant Viewer as DiagramViewer (Mermaid)
-    participant Cloud as PostgreSQL (@insforge)
-
-    U->>Editor: Escribe/pega SQL DDL
-    Editor->>Parser: Texto DDL (debounce 300ms)
-    Parser->>Parser: Tokenizar → AST → SchemaModel
-    Parser->>Viewer: SchemaModel
-    Viewer->>Viewer: SchemaModel → Mermaid string → SVG
-    Viewer->>U: Diagrama ERD renderizado
-
-    U->>Cloud: Click "Guardar" (autenticado)
-    Cloud->>Cloud: Inserta en tabla diagramas
-    Cloud-->>U: Confirmación + sync RT
-```
-
-**Punto clave:** En la Web App, **todo el parseo ocurre en el navegador del usuario**. El servidor solo se usa para guardar/compartir diagramas, no para procesar esquemas.
-
-### 4.2 Vista de Interacción — Desktop App (Conexión Directa a BD)
-
-```mermaid
-sequenceDiagram
-    participant U as Usuario
-    participant Electron as Electron UI
-    participant Go as Backend Go (Child Process)
-    participant DB as BD del Usuario
-
-    U->>Electron: Ingresa credenciales en ConnectionForm
-    Electron->>Go: POST /connect {engine, host, port, user, pass, db}
-    Go->>DB: Handshake via driver nativo
-    DB-->>Go: Connected
-    Go->>DB: SELECT * FROM information_schema.tables / columns / key_column_usage
-    DB-->>Go: Metadatos crudos
-    Go->>Go: Normalizar a SchemaModel
-    Go-->>Electron: JSON SchemaModel
-    Electron->>Electron: SchemaModel → Mermaid → SVG
-    Electron->>U: Diagrama ERD renderizado
-```
-
-**Punto clave:** El backend Go SOLO extrae metadatos (estructura). **Nunca lee datos de las tablas del usuario.** Las credenciales viven en memoria RAM y se descartan al cerrar.
-
-***
-
-## 5. Vista de Procesos
-
-### 5.1 Cobertura de 9 Categorías de Base de Datos
-
-| Categoría | Mecanismo de entrada | Cómo genera el diagrama |
-| :-- | :-- | :-- |
-| **Relational** (MySQL, PG, Oracle, SQL Server, SQLite) | Conector directo (Desktop) + Parser DDL (Web) | ERD clásico: tablas, columnas, PKs, FKs |
-| **NewSQL** (CockroachDB, TiDB, YugaByte) | Usan protocolo PG o MySQL → mismos conectores | ERD idéntico al relacional |
-| **Spatial** (PostGIS) | Extensión de PostgreSQL → mismo conector PG | ERD + columnas de tipo geometry |
-| **Time-Series** (TimescaleDB) | Extensión de PostgreSQL → mismo conector PG | ERD con hypertables como entidades |
-| **Columnar** (Cassandra, ClickHouse) | Parser CQL/SQL (≈ SQL estándar) vía parser DDL | ERD con column families |
-| **Document** (MongoDB, CouchDB) | Conector MongoDB (Desktop) + Parser JSON Schema (Web) | ERD inferido: colecciones como entidades, campos como atributos |
-| **Key-Value** (Redis, DynamoDB) | Parser JSON Schema (formato de definición) | Diagrama simple: stores con key/value types |
-| **Graph** (Neo4j) | Parser Cypher `CREATE` (extensión futura) o JSON de nodos/aristas | Diagrama de nodos y relaciones |
-| **Object-Oriented** (ZODB, db4o) | Parser JSON/YAML de definición de clases | Diagrama de clases: herencia y composición |
-
-***
-
-## 6. Vista de Despliegue
-
-### 6.1 Web App
-
-```
-Usuario (Navegador)
-  └── React SPA (Vite build estático)
-        ├── @dbcanvas/parsers (ejecuta en browser)
-        ├── @dbcanvas/ui (componentes React)
-        └── SDK @insforge/cli → PostgreSQL Cloud
-              ├── tabla: usuarios
-              ├── tabla: proyectos
-              ├── tabla: diagramas
-              └── tabla: colaboradores
-```
-
-### 6.2 Desktop App
-
-```
-Usuario (Windows / macOS / Linux)
-  └── Electron App (instalador nativo)
-        ├── React UI (mismos componentes @dbcanvas/ui)
-        ├── @dbcanvas/parsers (para DDL pegado manualmente)
-        └── Go Backend (child process, puerto dinámico)
-              ├── Conector PostgreSQL
-              ├── Conector MySQL
-              ├── Conector SQLite
-              ├── Conector MongoDB
-              └── Conector SQL Server
-```
-
-No se requiere servidor dedicado, infraestructura cloud ni hardware especializado para el uso del Desktop. La Web App utiliza PostgreSQL gestionado por `@insforge/cli` exclusivamente para persistencia de diagramas y autenticación.
-
-***
-
-## Anexo - Trazabilidad de Integracion de Repositorios
-
-Para preservar la evidencia academica del trabajo realizado, el repositorio oficial **UPT-FAING-EPIS/proyecto-si783-2026-i-u1-generador-de-diagramas-de-base** consolida los historiales de desarrollo usados durante el proyecto.
-
-| Repositorio / Rama | Rol dentro del proyecto | Evidencia conservada |
-| :-- | :-- | :-- |
-| `UPT-FAING-EPIS/proyecto-si783-2026-i-u1-generador-de-diagramas-de-base` | Repositorio oficial universitario | Base oficial y rama `main` |
-| `iovargasjeff/fluxsql` | Fork historico usado para avanzar y resolver despliegue alterno | 65 commits integrados |
-| `iovargasjeff/fluxsql-web` | Version web limpia reconstruida | 4 commits principales integrados |
-| `desktop` | Variante de escritorio | Tauri, frontend estatico, backend FastAPI local, conectores y empaquetado |
-| `redesign-ui` | Evolucion visual | Redisenio de interfaz y mejoras de experiencia |
-
-La rama `main` conserva la version web limpia y la documentacion academica principal. La rama `desktop` conserva la variante local empaquetable. Ambas ramas forman parte del repositorio oficial para evitar perdida de historial y mantener la trazabilidad solicitada como evidencia del desarrollo.
-
+La arquitectura Desktop forma parte del repositorio oficial luego de integrar los historiales de `iovargasjeff/fluxsql` y `iovargasjeff/fluxsql-web`, evitando perdida de commits usados como evidencia academica.

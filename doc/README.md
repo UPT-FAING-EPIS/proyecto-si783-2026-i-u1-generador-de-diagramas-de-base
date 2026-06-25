@@ -1,6 +1,6 @@
-# Documentacion del Proyecto FluxSQL
+# Documentacion FluxSQL Desktop
 
-Esta carpeta contiene la documentacion academica y tecnica disponible en la rama `desktop`.
+Esta carpeta contiene la documentacion academica y tecnica especifica de la rama `desktop`. Los informes FD01-FD05 fueron adaptados desde la plantilla academica del proyecto para describir la variante local Tauri + FastAPI.
 
 ## Informes academicos
 
@@ -16,7 +16,7 @@ Esta carpeta contiene la documentacion academica y tecnica disponible en la rama
 
 | Variante | Documento | Rama relacionada |
 | :-- | :-- | :-- |
-| Web App | [WEB.md](./WEB.md) | `main` |
+| Web App anterior | [WEB.md](./WEB.md) | `main` |
 | Desktop App | [DESKTOP.md](./DESKTOP.md) | `desktop` |
 
 ## Trazabilidad de integracion de repositorios
@@ -35,7 +35,7 @@ La evidencia de historial se preservo integrando:
 | `iovargasjeff/fluxsql` | Fork historico usado para trabajo y despliegue alterno | 65 commits |
 | `iovargasjeff/fluxsql-web` | Version web limpia reconstruida | 4 commits principales y ramas `desktop` / `redesign-ui` |
 
-La rama `desktop` conserva la implementacion local empaquetable con Tauri + FastAPI. La rama `main` conserva la version web limpia y la documentacion academica principal. Ambas ramas viven ahora en el repositorio oficial para no perder evidencia de commits.
+La rama `desktop` conserva la implementacion local empaquetable con Tauri + FastAPI. La rama `main` conserva la version web limpia y la documentacion academica general anterior. Ambas ramas viven ahora en el repositorio oficial para no perder evidencia de commits.
 
 ## Equipo
 
