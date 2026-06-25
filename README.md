@@ -1,12 +1,23 @@
 # FluxSQL Desktop
 
-FluxSQL Desktop es una aplicacion local para inspeccionar bases de datos, generar diagramas desde su esquema real, producir datos y analizar consultas.
+FluxSQL Desktop es la variante local de FluxSQL para inspeccionar bases de datos, generar diagramas desde esquemas reales, producir datos y analizar consultas sin exponer credenciales a servicios externos.
+
+## Equipo
+
+| Integrante | Rol |
+| :-- | :-- |
+| Jefferson Alfonso Vargas Espinoza (2023076820) | Integracion Tauri, backend FastAPI, conectores, empaquetado y arquitectura |
+| Kiara Holly Zapana Murillo (2023077087) | UI/UX, validacion visual, dashboard, pruebas manuales y documentacion |
 
 ## Arquitectura
 
-- `frontend-app/`: interfaz Next.js exportada como archivos estaticos.
-- `frontend-app/src-tauri/`: contenedor nativo Tauri y administrador del backend local.
-- `backend-python/`: sidecar FastAPI para conectores, diagramas, generacion y analisis.
+| Capa | Ruta | Responsabilidad |
+| :-- | :-- | :-- |
+| Frontend | `frontend-app/` | Interfaz Next.js exportada como archivos estaticos |
+| Shell nativo | `frontend-app/src-tauri/` | Contenedor Tauri, ciclo de vida del backend e instalador |
+| Backend local | `backend-python/` | API FastAPI, conectores, generacion de diagramas, generacion de datos y analisis |
+| Conectores | `backend-python/backend/connectors/` | PostgreSQL, MySQL, SQL Server, MongoDB, Neo4j y Cassandra |
+| Analizador | `backend-python/query_analyzer/` | Metricas, perfiles y deteccion de patrones de consultas |
 
 En desarrollo, `localhost:3000` se usa solamente para hot reload. El instalador final carga el frontend estatico desde `out/` y no inicia un servidor Next.js.
 
@@ -14,7 +25,12 @@ Tauri inicia el backend en un puerto local dinamico, espera su endpoint `/health
 
 ## Desarrollo
 
-Requisitos: Node.js, pnpm, Rust y Python.
+Requisitos:
+
+- Node.js.
+- pnpm.
+- Rust y Cargo.
+- Python.
 
 ```powershell
 cd frontend-app
@@ -41,4 +57,9 @@ El instalador final incluye el backend y no requiere Node.js, pnpm ni Python.
 
 ## Pruebas manuales
 
-Consulta el checklist en `frontend-app/README.md`. Para validar el flujo principal, conecta la base local `cienciasnet`, genera su diagrama y usa la opcion de refrescar desde la base de datos.
+Consulta el checklist en `frontend-app/README.md`. Para validar el flujo principal, conecta una base local, genera su diagrama y usa la opcion de refrescar desde la base de datos.
+
+## Documentacion
+
+- [Guia Desktop](./doc/DESKTOP.md)
+- Repositorio oficial con documentacion academica completa: `main`.
