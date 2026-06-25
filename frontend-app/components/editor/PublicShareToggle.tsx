@@ -54,7 +54,7 @@ export function PublicShareToggle({ diagramId, initialIsPublic, initialShareAcce
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-[#1E2A45] bg-[#0A0F1E] px-2 py-1">
+    <div className="flex shrink-0 items-center gap-2 rounded-xl border border-[#1E2A45] bg-[#0A0F1E] px-2 py-1">
       <button
         type="button"
         role="switch"
@@ -98,7 +98,7 @@ export function PublicShareToggle({ diagramId, initialIsPublic, initialShareAcce
         </button>
 
         {accessOpen && isPublic && !loading && (
-          <div className="absolute right-0 top-9 z-50 w-40 overflow-hidden rounded-lg border border-[#1E2A45] bg-[#0B1322] p-1 shadow-2xl shadow-black/50">
+          <div className="absolute right-0 top-9 z-[120] w-40 overflow-hidden rounded-lg border border-[#1E2A45] bg-[#0B1322] p-1 shadow-2xl shadow-black/50">
             {ACCESS_OPTIONS.map(({ value, label, icon: Icon }) => (
               <button
                 key={value}

@@ -8,6 +8,8 @@ export type ActivityAction =
   | 'project_saved'
   | 'project_deleted'
   | 'project_restored'
+  | 'project_permanently_deleted'
+  | 'project_left'
   | 'collaborator_invited'
   | 'schema_exported'
 

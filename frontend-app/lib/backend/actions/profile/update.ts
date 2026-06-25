@@ -14,7 +14,7 @@ export async function updateUserProfile({
   name?: string
   avatarUrl?: string
 }) {
-  const update: Record<string, string> = {}
+  const update: { name?: string; avatarUrl?: string } = {}
   if (name !== undefined) update.name = name
   if (avatarUrl !== undefined) update.avatarUrl = avatarUrl
 
